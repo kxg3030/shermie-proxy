@@ -35,7 +35,7 @@ func main() {
 		fmt.Println(request.RequestURI)
 	}
 	s.OnResponseEvent = func(response *http.Response) {
-
+		fmt.Println(response.Header)
 	}
 	_ = s.Start()
 }
