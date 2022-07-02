@@ -4,10 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"fmt"
+	"github/shermie-proxy/Core/Websocket"
 	"github/shermie-proxy/Log"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +27,8 @@ type ProxyHttp struct {
 	reader   *bufio.Reader
 	request  *http.Request
 	response *http.Response
+	upgrade  Websocket.Upgrader
+	ssl      bool
 	conn     net.Conn
 	port     string
 }
@@ -42,7 +49,7 @@ func (i *ProxyHttp) handle() {
 		i.port = hostname[len(hostname)-1]
 	}
 	i.request = request
-	// 如果是connect方法则是ssl请求
+	// 如果是connect方法则是http协议的ssl请求或者ws请求
 	if i.request.Method == http.MethodConnect {
 		i.handleSslRequest()
 		return
@@ -73,12 +80,11 @@ func (i *ProxyHttp) handleRequest() {
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	httpEntity := &HttpRequestEntity{
-		startTime: time.Now(),
-		request:   i.request,
-	}
+	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request,}
 	// TODO 处理ws
-
+	if ok := i.handleWsRequest(); ok {
+		return
+	}
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(httpEntity)
 	if i.response == nil {
@@ -123,6 +129,7 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 		"Proxy-Authenticate",
 		// 代理层不能转发这个首部
 		"Connection",
+		"Accept-Encoding",
 	}
 	for _, value := range removeHeaders {
 		if v := header.Get(value); len(v) > 0 {
@@ -151,7 +158,6 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 	return response, err
 }
 
-// 处理客户端的[server-hello]请求
 func (i *ProxyHttp) handleSslRequest() {
 	// 预先测试一下目标服务器能否连接
 	target, err := net.Dial("tcp", i.request.Host)
@@ -160,17 +166,24 @@ func (i *ProxyHttp) handleSslRequest() {
 		return
 	}
 	defer target.Close()
-	// 向源连接返回连接成功(这里如果使用i.writer.Write后面必须马上flush,否则数据还是存在于缓冲区里面)
+	// 向源连接返回连接成功
 	_, err = i.conn.Write([]byte(ConnectSuccess))
 	if err != nil {
 		Log.Log.Println("返回连接状态失败：" + err.Error())
 		return
 	}
 	// 建立ssl连接并返回给源
-	i.SslReceiveSend()
+	i.SslReceiveSend(target)
 }
 
-func (i *ProxyHttp) SslReceiveSend() {
+func (i *ProxyHttp) SetRequest(request *http.Request) *http.Request {
+	request.Header.Set("Connection", "false")
+	request.URL.Host = request.Host
+	request.URL.Scheme = "https"
+	return request
+}
+
+func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
 	var err error
 	certificate, err := Cache.GetCertificate(i.request.Host, i.port)
 	if err != nil {
@@ -184,38 +197,53 @@ func (i *ProxyHttp) SslReceiveSend() {
 	// 创建ssl连接
 	sslConn := tls.Server(i.conn, &tls.Config{Certificates: []tls.Certificate{cert}})
 	err = sslConn.Handshake()
+	// 如果不是http的ssl握手请求,则说明是ws请求,这里专门处理这种情况
 	if err != nil {
 		if err == io.EOF || strings.Index(err.Error(), "An existing connection was forcibly closed by the remote host.") != -1 {
 			Log.Log.Println("客户端连接超时" + err.Error())
 			return
 		}
-		Log.Log.Println("其他错误是个什么错误：" + err.Error())
-		// 获取最后返回数据
-		//lastMsg := string(sslConn.ReadLastTimeBytes())
-		//if lastMsg == "" {
-		//	target, err := net.Dial("tcp", i.request.Host)
-		//	if err != nil {
-		//		Log.Log.Println("connect remote  http server error：" + err.Error())
-		//		return
-		//	}
-		//	defer target.Close()
-		//	targetWriter := bufio.NewWriter(target)
-		//	_, _ = targetWriter.Write([]byte(lastMsg))
-		//	// 复制数据：源-->目
-		//	_, err = io.Copy(targetWriter, i.reader)
-		//	_ = targetWriter.Flush()
-		//	if err != nil {
-		//		Log.Log.Println("source copy to destination error：" + err.Error())
-		//		return
-		//	}
-		//	// 复制数据：源<--目
-		//	_, err = io.Copy(i.writer, target)
-		//	_ = i.writer.Flush()
-		//	if err != nil {
-		//		Log.Log.Println("destination copy to source  error：" + err.Error())
-		//		return
-		//	}
-		//}
+		// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
+		rawInput := string(sslConn.ReadLastTimeBytes())
+		rawInputList := strings.Split(rawInput, "\r\n")
+		_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		// 读取请求方法
+		wsMethodList := strings.Split(rawInputList[0], " ")
+		// 构建请求
+		wsRequest := &http.Request{
+			Method: wsMethodList[0],
+			Header: map[string][]string{},
+		}
+		for _, value := range rawInputList {
+			// 填充header
+			headerKeValList := strings.Split(value, ":")
+			if len(headerKeValList) > 1 {
+				wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
+			}
+			// 填充host
+			if wsRequest.RequestURI == "" && headerKeValList[0] == "HOST" {
+				wsRequest.Host = headerKeValList[1]
+				// 填充path
+				wsRequest.RequestURI = fmt.Sprintf("%s:%s", headerKeValList[0], wsMethodList[1])
+				wsRequest.URL, _ = url.Parse(fmt.Sprintf("%s:%s", headerKeValList[0], wsMethodList[1]))
+			}
+			// 填充content-length
+			if headerKeValList[0] == "Content-Length" {
+				contentLen, _ := strconv.Atoi(headerKeValList[1])
+				contentHeaderLen := len(rawInput)
+				bodyLen := contentHeaderLen - contentLen
+				wsRequest.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
+				wsRequest.ContentLength = int64(bodyLen)
+			}
+		}
+		i.request = wsRequest
+		// 将构建的请求对象
+		if wsMethodList[0] == http.MethodConnect {
+			i.handleSslRequest()
+			return
+		}
+		i.handleRequest()
+		return
 	}
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
 	defer func() {
@@ -226,18 +254,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
 		return
 	}
+	i.request = i.SetRequest(i.request)
 	body, _ := i.NopBuffReader(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	httpEntity := &HttpRequestEntity{
-		startTime: time.Now(),
-		request:   i.request,
-		body:      i.request.Body,
-	}
-	httpEntity.request.URL.Host = i.request.Host
-	httpEntity.request.RemoteAddr = i.request.RemoteAddr
-	httpEntity.request.URL.Scheme = "https"
+	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request, body: i.request.Body,}
 	i.response, err = i.Transport(httpEntity)
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应")
@@ -263,4 +285,43 @@ func (i *ProxyHttp) SslReceiveSend() {
 	if err != nil {
 		Log.Log.Println("代理返回响应数据失败：" + err.Error())
 	}
+}
+
+func (i *ProxyHttp) handleWsRequest() bool {
+
+	if i.request.Header.Get("Upgrade") == "" {
+		return false
+	}
+	const WssConnectionok = 0x3
+	const WssUserSend = 0x4
+	const WssServerSend = 0x5
+	const WssDisconnect = 0x6
+	const WsConnectionok = 0x7
+	const WsUserSend = 0x8
+	const WsServerSend = 0x9
+	const WsDisconnect = 0xA
+	i.upgrade = Websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+		Subprotocols: []string{i.request.Header.Get("Sec-WebSocket-Protocol")},
+	}
+	recorder := httptest.NewRecorder()
+	readerWriter := bufio.NewReadWriter(i.reader, i.writer)
+	// 升级成ws连接
+	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, readerWriter)
+	if err != nil {
+		return true
+	}
+	defer func() {
+		_ = wsConn.Close()
+	}()
+	hostname := fmt.Sprintf("%s://%s%s?%s", func() string {
+		if i.ssl {
+			return "wss"
+		}
+		return "ws"
+	}(), i.request.Host, i.request.URL.Path, i.request.URL.RawQuery)
+	fmt.Println(hostname)
+	return false
 }
