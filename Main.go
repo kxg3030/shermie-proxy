@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bufio"
+	"compress/gzip"
 	"flag"
 	"fmt"
 	"github/shermie-proxy/Core"
 	"github/shermie-proxy/Log"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var port *string
@@ -32,10 +36,19 @@ func main() {
 	s := Core.NewProxyServer(*port)
 	// 注册事件函数
 	s.OnRequestEvent = func(request *http.Request) {
-		fmt.Println(request.RequestURI)
+		//fmt.Println(request.RequestURI)
 	}
 	s.OnResponseEvent = func(response *http.Response) {
-		fmt.Println(response.Header)
+		contentType := response.Header.Get("Content-Type")
+		var reader io.Reader
+		if strings.Contains(contentType, "json") {
+			reader = bufio.NewReader(response.Body)
+			if header := response.Header.Get("Content-Encoding"); header == "gzip" {
+				reader, _ = gzip.NewReader(response.Body)
+			}
+			body, _ := io.ReadAll(reader)
+			fmt.Println(string(body))
+		}
 	}
 	_ = s.Start()
 }

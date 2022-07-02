@@ -78,6 +78,7 @@ func (i *ProxyHttp) handleRequest() {
 		request:   i.request,
 	}
 	// TODO 处理ws
+
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(httpEntity)
 	if i.response == nil {
@@ -120,6 +121,7 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 		"Upgrade",
 		"Proxy-Authorization",
 		"Proxy-Authenticate",
+		// 代理层不能转发这个首部
 		"Connection",
 	}
 	for _, value := range removeHeaders {
@@ -151,13 +153,13 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 
 // 处理客户端的[server-hello]请求
 func (i *ProxyHttp) handleSslRequest() {
-	// 向目标地址发起连接
+	// 预先测试一下目标服务器能否连接
 	target, err := net.Dial("tcp", i.request.Host)
 	if err != nil {
 		Log.Log.Println("连接目的地址失败：" + err.Error())
 		return
 	}
-	target.Close()
+	defer target.Close()
 	// 向源连接返回连接成功(这里如果使用i.writer.Write后面必须马上flush,否则数据还是存在于缓冲区里面)
 	_, err = i.conn.Write([]byte(ConnectSuccess))
 	if err != nil {
