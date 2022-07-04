@@ -212,8 +212,8 @@ func (i *ProxyHttp) SslReceiveSend() {
 		}
 		// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
 		rawInput := string(sslConn.ReadLastTimeBytes())
-		rawInputList := strings.Split(rawInput, "\r\n")
 		_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		rawInputList := strings.Split(rawInput, "\r\n")
 		// 读取请求方法
 		wsMethodList := strings.Split(rawInputList[0], " ")
 		// 构建请求
@@ -223,24 +223,20 @@ func (i *ProxyHttp) SslReceiveSend() {
 		}
 		for _, value := range rawInputList {
 			// 填充header
-			headerKeValList := strings.Split(value, ":")
-			if len(headerKeValList) > 1 && headerKeValList[0] != "Host" {
-				wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
+			headerKeValList := strings.Split(value, ": ")
+			if len(headerKeValList) <= 1 {
+				continue
 			}
+			wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
 			// 填充host
 			if headerKeValList[0] == "Host" {
-				headerKeValList[1] = strings.Replace(headerKeValList[1], " ", "", 1)
 				wsRequest.Host = headerKeValList[1]
-				if len(headerKeValList) > 2 {
-					wsRequest.Host = fmt.Sprintf("%s:%s", headerKeValList[1], headerKeValList[2])
-				}
 				wsRequest.RequestURI = fmt.Sprintf("http://%s", wsRequest.Host)
 				wsRequest.URL, err = url.Parse(fmt.Sprintf("%s%s", wsRequest.RequestURI, wsMethodList[1]))
 				if err != nil {
 					Log.Log.Println("解析ws请求地址错误：" + err.Error())
 					return
 				}
-				wsRequest.Header.Set(headerKeValList[0], wsRequest.Host)
 			}
 			// 填充content-length
 			if headerKeValList[0] == "Content-Length" {
@@ -319,9 +315,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	recorder := httptest.NewRecorder()
 	var readerWriter *bufio.ReadWriter
 	readerWriter = bufio.NewReadWriter(i.reader, i.writer)
-	if i.ssl {
-		readerWriter = bufio.NewReadWriter(i.reader, bufio.NewWriter(i.target))
-	}
 	// 升级成ws连接
 	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, readerWriter)
 	if err != nil {
@@ -353,11 +346,12 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	defer func() {
 		_ = targetWsConn.Close()
 	}()
-	// TODO 触发事件
 	// 读取浏览器数据(长连接)
 	go func() {
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
+			fmt.Println("server response")
+			fmt.Println(string(message))
 			if err != nil {
 				Log.Log.Println("接收ws服务器数据失败-1：" + err.Error())
 				break
@@ -372,6 +366,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	}()
 	for {
 		msgType, message, err := wsConn.ReadMessage()
+		fmt.Println("ws request")
+		fmt.Println(string(message))
 		if err != nil {
 			Log.Log.Println("接收ws浏览器数据失败-2：" + err.Error())
 			break
