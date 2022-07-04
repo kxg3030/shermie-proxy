@@ -27,7 +27,8 @@ type ProxyHttp struct {
 	reader   *bufio.Reader
 	request  *http.Request
 	response *http.Response
-	upgrade  Websocket.Upgrader
+	upgrade  *Websocket.Upgrader
+	target   net.Conn
 	ssl      bool
 	conn     net.Conn
 	port     string
@@ -51,10 +52,12 @@ func (i *ProxyHttp) handle() {
 	i.request = request
 	// 如果是connect方法则是http协议的ssl请求或者ws请求
 	if i.request.Method == http.MethodConnect {
+		i.ssl = true
 		i.handleSslRequest()
 		return
 	}
 	// 否则是普通请求
+	i.ssl = false
 	i.handleRequest()
 }
 
@@ -81,7 +84,7 @@ func (i *ProxyHttp) handleRequest() {
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request,}
-	// TODO 处理ws
+	// 处理ws
 	if ok := i.handleWsRequest(); ok {
 		return
 	}
@@ -113,6 +116,9 @@ func (i *ProxyHttp) handleRequest() {
 }
 
 func (i *ProxyHttp) NopBuffReader(reader io.Reader) ([]byte, error) {
+	if reader == nil {
+		return []byte{}, nil
+	}
 	body, err := io.ReadAll(reader)
 	return body, err
 }
@@ -160,12 +166,13 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 
 func (i *ProxyHttp) handleSslRequest() {
 	// 预先测试一下目标服务器能否连接
-	target, err := net.Dial("tcp", i.request.Host)
+	var err error
+	i.target, err = net.Dial("tcp", i.request.Host)
 	if err != nil {
 		Log.Log.Println("连接目的地址失败：" + err.Error())
 		return
 	}
-	defer target.Close()
+	defer i.target.Close()
 	// 向源连接返回连接成功
 	_, err = i.conn.Write([]byte(ConnectSuccess))
 	if err != nil {
@@ -173,7 +180,7 @@ func (i *ProxyHttp) handleSslRequest() {
 		return
 	}
 	// 建立ssl连接并返回给源
-	i.SslReceiveSend(target)
+	i.SslReceiveSend()
 }
 
 func (i *ProxyHttp) SetRequest(request *http.Request) *http.Request {
@@ -183,7 +190,7 @@ func (i *ProxyHttp) SetRequest(request *http.Request) *http.Request {
 	return request
 }
 
-func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
+func (i *ProxyHttp) SslReceiveSend() {
 	var err error
 	certificate, err := Cache.GetCertificate(i.request.Host, i.port)
 	if err != nil {
@@ -200,7 +207,7 @@ func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
 	// 如果不是http的ssl握手请求,则说明是ws请求,这里专门处理这种情况
 	if err != nil {
 		if err == io.EOF || strings.Index(err.Error(), "An existing connection was forcibly closed by the remote host.") != -1 {
-			Log.Log.Println("客户端连接超时" + err.Error())
+			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
 		// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
@@ -217,15 +224,23 @@ func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
 		for _, value := range rawInputList {
 			// 填充header
 			headerKeValList := strings.Split(value, ":")
-			if len(headerKeValList) > 1 {
+			if len(headerKeValList) > 1 && headerKeValList[0] != "Host" {
 				wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
 			}
 			// 填充host
-			if wsRequest.RequestURI == "" && headerKeValList[0] == "HOST" {
+			if headerKeValList[0] == "Host" {
+				headerKeValList[1] = strings.Replace(headerKeValList[1], " ", "", 1)
 				wsRequest.Host = headerKeValList[1]
-				// 填充path
-				wsRequest.RequestURI = fmt.Sprintf("%s:%s", headerKeValList[0], wsMethodList[1])
-				wsRequest.URL, _ = url.Parse(fmt.Sprintf("%s:%s", headerKeValList[0], wsMethodList[1]))
+				if len(headerKeValList) > 2 {
+					wsRequest.Host = fmt.Sprintf("%s:%s", headerKeValList[1], headerKeValList[2])
+				}
+				wsRequest.RequestURI = fmt.Sprintf("http://%s", wsRequest.Host)
+				wsRequest.URL, err = url.Parse(fmt.Sprintf("%s%s", wsRequest.RequestURI, wsMethodList[1]))
+				if err != nil {
+					Log.Log.Println("解析ws请求地址错误：" + err.Error())
+					return
+				}
+				wsRequest.Header.Set(headerKeValList[0], wsRequest.Host)
 			}
 			// 填充content-length
 			if headerKeValList[0] == "Content-Length" {
@@ -239,9 +254,11 @@ func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
 		i.request = wsRequest
 		// 将构建的请求对象
 		if wsMethodList[0] == http.MethodConnect {
+			i.ssl = true
 			i.handleSslRequest()
 			return
 		}
+		i.ssl = false
 		i.handleRequest()
 		return
 	}
@@ -288,29 +305,27 @@ func (i *ProxyHttp) SslReceiveSend(target net.Conn) {
 }
 
 func (i *ProxyHttp) handleWsRequest() bool {
-
 	if i.request.Header.Get("Upgrade") == "" {
 		return false
 	}
-	const WssConnectionok = 0x3
-	const WssUserSend = 0x4
-	const WssServerSend = 0x5
-	const WssDisconnect = 0x6
-	const WsConnectionok = 0x7
-	const WsUserSend = 0x8
-	const WsServerSend = 0x9
-	const WsDisconnect = 0xA
-	i.upgrade = Websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-		Subprotocols: []string{i.request.Header.Get("Sec-WebSocket-Protocol")},
+	if i.upgrade == nil {
+		i.upgrade = &Websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}
 	}
+	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
-	readerWriter := bufio.NewReadWriter(i.reader, i.writer)
+	var readerWriter *bufio.ReadWriter
+	readerWriter = bufio.NewReadWriter(i.reader, i.writer)
+	if i.ssl {
+		readerWriter = bufio.NewReadWriter(i.reader, bufio.NewWriter(i.target))
+	}
 	// 升级成ws连接
 	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, readerWriter)
 	if err != nil {
+		Log.Log.Println("升级ws协议失败：" + err.Error())
 		return true
 	}
 	defer func() {
@@ -322,6 +337,67 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 		return "ws"
 	}(), i.request.Host, i.request.URL.Path, i.request.URL.RawQuery)
-	fmt.Println(hostname)
-	return false
+
+	// 去掉ws的头部,因为后续工具类会自己生成并附加到请求中
+	i.RemoveWsHeader()
+	var dialer Websocket.Dialer
+	dialer = Websocket.Dialer{}
+	if i.ssl {
+		dialer = Websocket.Dialer{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
+	targetWsConn, _, err := dialer.Dial(hostname, i.request.Header)
+	if err != nil {
+		Log.Log.Println("连接ws服务器失败：" + err.Error())
+		return true
+	}
+	defer func() {
+		_ = targetWsConn.Close()
+	}()
+	// TODO 触发事件
+	// 读取浏览器数据(长连接)
+	go func() {
+		for {
+			msgType, message, err := targetWsConn.ReadMessage()
+			if err != nil {
+				Log.Log.Println("接收ws服务器数据失败-1：" + err.Error())
+				break
+			}
+			// TODO 触发事件
+			err = wsConn.WriteMessage(msgType, message)
+			if err != nil {
+				Log.Log.Println("发送ws浏览器数据失败-1：" + err.Error())
+				break
+			}
+		}
+	}()
+	for {
+		msgType, message, err := wsConn.ReadMessage()
+		if err != nil {
+			Log.Log.Println("接收ws浏览器数据失败-2：" + err.Error())
+			break
+		}
+		// TODO 触发事件
+		err = targetWsConn.WriteMessage(msgType, message)
+		if err != nil {
+			// TODO 触发事件
+			Log.Log.Println("发送ws服务器数据失败-2：" + err.Error())
+			break
+		}
+	}
+	return true
+}
+
+func (i *ProxyHttp) RemoveWsHeader() {
+	headers := []string{
+		"Upgrade",
+		"Connection",
+		"Sec-Websocket-Key",
+		"Sec-Websocket-Version",
+		"Sec-Websocket-Extensions",
+	}
+	for _, value := range headers {
+		if ok := i.request.Header.Get(value); ok != "" {
+			i.request.Header.Del(value)
+		}
+	}
 }

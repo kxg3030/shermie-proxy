@@ -2,28 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6f133271-4068-40b8-8a3d-d81579bef430" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Client.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/ClientClone.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/ClientCloneLegacy.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Compression.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Conn.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/ConnWrite.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/ConnWriteLegacy.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Doc.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Join.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Json.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Mask.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/MaskSafe.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Prepared.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Proxy.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Server.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Trace.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Trace_17.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/Util.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Core/Websocket/XnetProxy.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Core/ProxyHttp.go" beforeDir="false" afterPath="$PROJECT_DIR$/Core/ProxyHttp.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Core/ProxyServer.go" beforeDir="false" afterPath="$PROJECT_DIR$/Core/ProxyServer.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -108,54 +89,54 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="911" y="137" key="#xdebugger.evaluate/0.0.1920.1040@0.0.1920.1040" timestamp="1656665095792" />
-    <state width="966" height="618" key="DebuggerActiveHint" timestamp="1656756526453">
+    <state width="966" height="618" key="DebuggerActiveHint" timestamp="1656862357338">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="966" height="618" key="DebuggerActiveHint/0.0.1920.1040@0.0.1920.1040" timestamp="1656756526453" />
-    <state width="1877" height="135" key="GridCell.Tab.0.bottom" timestamp="1656757273766">
+    <state width="966" height="618" key="DebuggerActiveHint/0.0.1920.1040@0.0.1920.1040" timestamp="1656862357338" />
+    <state width="1877" height="438" key="GridCell.Tab.0.bottom" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.0.center" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
+    <state width="1877" height="438" key="GridCell.Tab.0.center" timestamp="1656897882127">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.0.left" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882127" />
+    <state width="1877" height="438" key="GridCell.Tab.0.left" timestamp="1656897882127">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.0.right" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882127" />
+    <state width="1877" height="438" key="GridCell.Tab.0.right" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.1.bottom" timestamp="1656757273767">
+    <state width="1877" height="438" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
+    <state width="1877" height="438" key="GridCell.Tab.1.bottom" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273767" />
-    <state width="1877" height="135" key="GridCell.Tab.1.center" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
+    <state width="1877" height="438" key="GridCell.Tab.1.center" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.1.left" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
+    <state width="1877" height="438" key="GridCell.Tab.1.left" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
-    <state width="1877" height="135" key="GridCell.Tab.1.right" timestamp="1656757273766">
+    <state width="1877" height="438" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
+    <state width="1877" height="438" key="GridCell.Tab.1.right" timestamp="1656897882128">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="135" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1656757273766" />
+    <state width="1877" height="438" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1656897882128" />
     <state x="461" y="162" key="SettingsEditor" timestamp="1656497402115">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="461" y="162" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1656497402115" />
-    <state width="968" height="528" key="XDebugger.FullValuePopup" timestamp="1656754817845">
+    <state width="1294" height="528" key="XDebugger.FullValuePopup" timestamp="1656862537155">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="968" height="528" key="XDebugger.FullValuePopup/0.0.1920.1040@0.0.1920.1040" timestamp="1656754817845" />
-    <state x="92" y="92" width="1736" height="856" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1656729842373">
+    <state width="1294" height="528" key="XDebugger.FullValuePopup/0.0.1920.1040@0.0.1920.1040" timestamp="1656862537155" />
+    <state x="92" y="92" width="1736" height="856" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1656837307761">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="92" y="92" width="1736" height="856" key="com.intellij.history.integration.ui.views.FileHistoryDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1656729842373" />
+    <state x="92" y="92" width="1736" height="856" key="com.intellij.history.integration.ui.views.FileHistoryDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1656837307761" />
     <state x="556" y="204" width="807" height="632" key="find.popup" timestamp="1656648501916">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -171,9 +152,22 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/Core/ProxyHttp.go</url>
+          <line>320</line>
+          <option name="timeStamp" value="88" />
+        </line-breakpoint>
+      </breakpoints>
       <default-breakpoints>
         <breakpoint type="DlvErrorBreakpoint" />
       </default-breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="GoApplicationRunConfiguration">
+        <watch expression="rawInput" />
+        <watch expression="*(*&quot;net/http.Header&quot;)(824635468232)" />
+      </configuration>
+    </watches-manager>
   </component>
 </project>

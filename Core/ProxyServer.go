@@ -48,7 +48,6 @@ func (i *ProxyServer) Start() error {
 	}
 	i.listener = listener
 	Log.Log.Println("服务监听端口：" + i.port + "(如果是新生成的证书文件，请先手动将根证书.crt文件导入到系统中——by.失色天空)")
-	// 接收请求
 	i.MultiListen()
 	select {}
 }
@@ -62,17 +61,16 @@ func (i *ProxyServer) MultiListen() {
 					Log.Log.Println("接受连接失败：" + err.Error())
 					continue
 				}
-				client := &ConnClient{conn: conn}
-				go i.handle(client)
+				go i.handle(conn)
 			}
 		}()
 	}
 }
 
-func (i *ProxyServer) handle(client *ConnClient) {
-	defer client.conn.Close()
-	reader := bufio.NewReader(client.conn)
-	writer := bufio.NewWriter(client.conn)
+func (i *ProxyServer) handle(conn net.Conn) {
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 	// 预读取一段字节(不会真实读取出数据),比如：CONNECT wan.x.com:443 HTTP/1.1
 	peek, err := reader.Peek(1)
 	if err != nil {
@@ -83,7 +81,7 @@ func (i *ProxyServer) handle(client *ConnClient) {
 		proxyHttp := NewProxyHttp()
 		proxyHttp.reader = reader
 		proxyHttp.writer = writer
-		proxyHttp.conn = client.conn
+		proxyHttp.conn = conn
 		proxyHttp.server = i
 		proxyHttp.handle()
 		return
