@@ -24,8 +24,8 @@ type ProxyServer struct {
 	OnResponseEvent func(response *http.Response)
 	OnReceiveEvent  error
 	OnSendEvent     error
-	OnPacketEvent   error
-	OnSendToEvent   error
+	OnPacketEvent   func(msgType int, message []byte)
+	OnSendToEvent   func(msgType int, message []byte)
 }
 
 func NewProxyServer(port string) *ProxyServer {

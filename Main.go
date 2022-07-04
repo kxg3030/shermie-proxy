@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -34,10 +35,11 @@ func init() {
 func main() {
 	// 启动服务
 	s := Core.NewProxyServer(*port)
-	// 注册事件函数
+	// 注册http事件函数
 	s.OnRequestEvent = func(request *http.Request) {
-		//fmt.Println(request.RequestURI)
+
 	}
+	// 注册http事件函数
 	s.OnResponseEvent = func(response *http.Response) {
 		contentType := response.Header.Get("Content-Type")
 		var reader io.Reader
@@ -49,6 +51,13 @@ func main() {
 			body, _ := io.ReadAll(reader)
 			fmt.Println(string(body))
 		}
+	}
+	// 注册ws事件函数
+	s.OnPacketEvent = func(msgType int, message []byte) {
+		fmt.Println("客户端请求数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+	}
+	s.OnSendToEvent = func(msgType int, message []byte) {
+		fmt.Println("服务器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 	}
 	_ = s.Start()
 }

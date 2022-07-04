@@ -311,12 +311,11 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			},
 		}
 	}
+	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
-	var readerWriter *bufio.ReadWriter
-	readerWriter = bufio.NewReadWriter(i.reader, i.writer)
-	// 升级成ws连接
-	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, readerWriter)
+	// 开始ws握手
+	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
 	if err != nil {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
 		return true
@@ -330,7 +329,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 		return "ws"
 	}(), i.request.Host, i.request.URL.Path, i.request.URL.RawQuery)
-
 	// 去掉ws的头部,因为后续工具类会自己生成并附加到请求中
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
@@ -350,13 +348,11 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	go func() {
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
-			fmt.Println("server response")
-			fmt.Println(string(message))
+			i.server.OnPacketEvent(msgType, message)
 			if err != nil {
 				Log.Log.Println("接收ws服务器数据失败-1：" + err.Error())
 				break
 			}
-			// TODO 触发事件
 			err = wsConn.WriteMessage(msgType, message)
 			if err != nil {
 				Log.Log.Println("发送ws浏览器数据失败-1：" + err.Error())
@@ -366,16 +362,13 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	}()
 	for {
 		msgType, message, err := wsConn.ReadMessage()
-		fmt.Println("ws request")
-		fmt.Println(string(message))
+		i.server.OnSendToEvent(msgType, message)
 		if err != nil {
 			Log.Log.Println("接收ws浏览器数据失败-2：" + err.Error())
 			break
 		}
-		// TODO 触发事件
 		err = targetWsConn.WriteMessage(msgType, message)
 		if err != nil {
-			// TODO 触发事件
 			Log.Log.Println("发送ws服务器数据失败-2：" + err.Error())
 			break
 		}
