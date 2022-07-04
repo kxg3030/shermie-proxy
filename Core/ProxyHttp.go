@@ -50,7 +50,7 @@ func (i *ProxyHttp) handle() {
 		i.port = hostname[len(hostname)-1]
 	}
 	i.request = request
-	// 如果是connect方法则是http协议的ssl请求或者ws请求
+	// 如果是connect方法则是https请求或者ws、wss请求
 	if i.request.Method == http.MethodConnect {
 		i.ssl = true
 		i.handleSslRequest()
@@ -201,67 +201,35 @@ func (i *ProxyHttp) SslReceiveSend() {
 		return
 	}
 	cert := certificate.(tls.Certificate)
-	// 创建ssl连接
-	sslConn := tls.Server(i.conn, &tls.Config{Certificates: []tls.Certificate{cert}})
+	sslConn := tls.Server(i.conn, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	})
+	//backHello, _, err := sslConn.ClientHello()
+	//if err != nil {
+	//	Log.Log.Println("向浏览器发送ssl握手失败：" + err.Error())
+	//	return
+	//}
+	//if backHello == nil {
+	//	return
+	//}
+	// ssl校验
+	//err = sslConn.ServerHandshake(backHello)
 	err = sslConn.Handshake()
-	// 如果不是http的ssl握手请求,则说明是ws请求,这里专门处理这种情况
+	// 如果不是http的ssl请求,则说明是普通ws请求,这里专门处理这种情况
 	if err != nil {
 		if err == io.EOF || strings.Index(err.Error(), "An existing connection was forcibly closed by the remote host.") != -1 {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
-		// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
-		rawInput := string(sslConn.ReadLastTimeBytes())
-		_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		rawInputList := strings.Split(rawInput, "\r\n")
-		// 读取请求方法
-		wsMethodList := strings.Split(rawInputList[0], " ")
-		// 构建请求
-		wsRequest := &http.Request{
-			Method: wsMethodList[0],
-			Header: map[string][]string{},
-		}
-		for _, value := range rawInputList {
-			// 填充header
-			headerKeValList := strings.Split(value, ": ")
-			if len(headerKeValList) <= 1 {
-				continue
-			}
-			wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
-			// 填充host
-			if headerKeValList[0] == "Host" {
-				wsRequest.Host = headerKeValList[1]
-				wsRequest.RequestURI = fmt.Sprintf("http://%s", wsRequest.Host)
-				wsRequest.URL, err = url.Parse(fmt.Sprintf("%s%s", wsRequest.RequestURI, wsMethodList[1]))
-				if err != nil {
-					Log.Log.Println("解析ws请求地址错误：" + err.Error())
-					return
-				}
-			}
-			// 填充content-length
-			if headerKeValList[0] == "Content-Length" {
-				contentLen, _ := strconv.Atoi(headerKeValList[1])
-				contentHeaderLen := len(rawInput)
-				bodyLen := contentHeaderLen - contentLen
-				wsRequest.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
-				wsRequest.ContentLength = int64(bodyLen)
-			}
-		}
-		i.request = wsRequest
-		// 将构建的请求对象
-		if wsMethodList[0] == http.MethodConnect {
-			i.ssl = true
-			i.handleSslRequest()
-			return
-		}
-		i.ssl = false
-		i.handleRequest()
+		i.handleWsShakehandErr(sslConn)
 		return
 	}
+	i.ssl = true
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
 	defer func() {
 		_ = sslConn.Close()
 	}()
+	i.conn = sslConn
 	i.request, err = http.ReadRequest(bufio.NewReader(sslConn))
 	if err != nil {
 		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
@@ -274,6 +242,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request, body: i.request.Body,}
 	i.response, err = i.Transport(httpEntity)
+	if err != nil {
+		Log.Log.Println("远程服务器响应失败：" + err.Error())
+		return
+	}
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应")
 		return
@@ -283,10 +255,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 			i.response.Body.Close()
 		}
 	}()
-	if err != nil {
-		Log.Log.Println("远程服务器响应失败：" + err.Error())
-		return
-	}
 	body, _ = i.NopBuffReader(i.response.Body)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnResponseEvent(i.response)
@@ -298,6 +266,57 @@ func (i *ProxyHttp) SslReceiveSend() {
 	if err != nil {
 		Log.Log.Println("代理返回响应数据失败：" + err.Error())
 	}
+}
+
+func (i *ProxyHttp) handleWsShakehandErr(sslConn *tls.Conn) {
+	var err error
+	// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
+	rawInput := string(sslConn.ReadLastTimeBytes())
+	_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	rawInputList := strings.Split(rawInput, "\r\n")
+	// 读取请求方法
+	wsMethodList := strings.Split(rawInputList[0], " ")
+	// 构建请求
+	wsRequest := &http.Request{
+		Method: wsMethodList[0],
+		Header: map[string][]string{},
+	}
+	for _, value := range rawInputList {
+		// 填充header
+		headerKeValList := strings.Split(value, ": ")
+		if len(headerKeValList) <= 1 {
+			continue
+		}
+		wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
+		// 填充host
+		if headerKeValList[0] == "Host" {
+			wsRequest.Host = headerKeValList[1]
+			wsRequest.RequestURI = fmt.Sprintf("http://%s", wsRequest.Host)
+			wsRequest.URL, err = url.Parse(fmt.Sprintf("%s%s", wsRequest.RequestURI, wsMethodList[1]))
+			if err != nil {
+				Log.Log.Println("解析ws请求地址错误：" + err.Error())
+				return
+			}
+		}
+		// 填充content-length
+		if headerKeValList[0] == "Content-Length" {
+			contentLen, _ := strconv.Atoi(headerKeValList[1])
+			contentHeaderLen := len(rawInput)
+			bodyLen := contentHeaderLen - contentLen
+			wsRequest.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
+			wsRequest.ContentLength = int64(bodyLen)
+		}
+	}
+	i.request = wsRequest
+	// 将构建的请求对象
+	if wsMethodList[0] == http.MethodConnect {
+		i.ssl = true
+		i.handleSslRequest()
+		return
+	}
+	i.ssl = false
+	i.handleRequest()
+	return
 }
 
 func (i *ProxyHttp) handleWsRequest() bool {
