@@ -172,7 +172,7 @@ func (i *ProxyHttp) handleSslRequest() {
 		Log.Log.Println("连接目的地址失败：" + err.Error())
 		return
 	}
-	defer i.target.Close()
+	i.target.Close()
 	// 向源连接返回连接成功
 	_, err = i.conn.Write([]byte(ConnectSuccess))
 	if err != nil {
@@ -204,16 +204,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	sslConn := tls.Server(i.conn, &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	})
-	//backHello, _, err := sslConn.ClientHello()
-	//if err != nil {
-	//	Log.Log.Println("向浏览器发送ssl握手失败：" + err.Error())
-	//	return
-	//}
-	//if backHello == nil {
-	//	return
-	//}
 	// ssl校验
-	//err = sslConn.ServerHandshake(backHello)
 	err = sslConn.Handshake()
 	// 如果不是http的ssl请求,则说明是普通ws请求,这里专门处理这种情况
 	if err != nil {
@@ -221,7 +212,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
-		i.handleWsShakehandErr(sslConn)
+		i.handleWsShakehandErr(sslConn.ReadLastTimeBytes())
 		return
 	}
 	i.ssl = true
@@ -229,10 +220,15 @@ func (i *ProxyHttp) SslReceiveSend() {
 	defer func() {
 		_ = sslConn.Close()
 	}()
-	i.conn = sslConn
-	i.request, err = http.ReadRequest(bufio.NewReader(sslConn))
+	i.reader = bufio.NewReader(sslConn)
+	i.request, err = http.ReadRequest(i.reader)
 	if err != nil {
 		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
+		return
+	}
+	// 如果包含upgrade同步说明是wss请求
+	if i.request.Header.Get("Connection") == "Upgrade" {
+		i.handleWsRequest()
 		return
 	}
 	i.request = i.SetRequest(i.request)
@@ -268,10 +264,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}
 }
 
-func (i *ProxyHttp) handleWsShakehandErr(sslConn *tls.Conn) {
+func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 	var err error
 	// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
-	rawInput := string(sslConn.ReadLastTimeBytes())
+	rawInput := string(rawProtolInput)
 	_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	rawInputList := strings.Split(rawInput, "\r\n")
 	// 读取请求方法
@@ -308,12 +304,6 @@ func (i *ProxyHttp) handleWsShakehandErr(sslConn *tls.Conn) {
 		}
 	}
 	i.request = wsRequest
-	// 将构建的请求对象
-	if wsMethodList[0] == http.MethodConnect {
-		i.ssl = true
-		i.handleSslRequest()
-		return
-	}
 	i.ssl = false
 	i.handleRequest()
 	return
@@ -333,7 +323,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
-	// 开始ws握手
+	// 开始ws校验
 	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
 	if err != nil {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
