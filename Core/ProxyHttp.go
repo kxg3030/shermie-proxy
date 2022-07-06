@@ -79,7 +79,7 @@ func (i *ProxyHttp) handleRequest() {
 		_ = response.Write(i.conn)
 		return
 	}
-	body, _ := i.NopBuffReader(i.request.Body)
+	body, _ := i.ReadBody(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
@@ -103,7 +103,7 @@ func (i *ProxyHttp) handleRequest() {
 		Log.Log.Println("获取远程服务器响应失败：" + err.Error())
 		return
 	}
-	body, _ = i.NopBuffReader(i.response.Body)
+	body, _ = i.ReadBody(i.response.Body)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnResponseEvent(i.response)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
@@ -115,7 +115,7 @@ func (i *ProxyHttp) handleRequest() {
 	_ = i.response.Write(i.conn)
 }
 
-func (i *ProxyHttp) NopBuffReader(reader io.Reader) ([]byte, error) {
+func (i *ProxyHttp) ReadBody(reader io.Reader) ([]byte, error) {
 	if reader == nil {
 		return []byte{}, nil
 	}
@@ -165,7 +165,6 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 }
 
 func (i *ProxyHttp) handleSslRequest() {
-	// 预先测试一下目标服务器能否连接
 	var err error
 	i.target, err = net.Dial("tcp", i.request.Host)
 	if err != nil {
@@ -206,15 +205,18 @@ func (i *ProxyHttp) SslReceiveSend() {
 	})
 	// ssl校验
 	err = sslConn.Handshake()
-	// 如果不是http的ssl请求,则说明是普通ws请求,这里专门处理这种情况
+	// 如果不是http的ssl请求,则说明是普通ws请求(ws请求会ssl校验报错),这里专门处理这种情况
 	if err != nil {
 		if err == io.EOF || strings.Index(err.Error(), "An existing connection was forcibly closed by the remote host.") != -1 {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
+		i.ssl = false
 		i.handleWsShakehandErr(sslConn.ReadLastTimeBytes())
 		return
 	}
+	// 原连接替换成ssl连接
+	i.conn = sslConn
 	i.ssl = true
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
 	defer func() {
@@ -228,11 +230,11 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}
 	// 如果包含upgrade同步说明是wss请求
 	if i.request.Header.Get("Connection") == "Upgrade" {
-		i.handleWsRequest()
+		i.handleWssRequest()
 		return
 	}
 	i.request = i.SetRequest(i.request)
-	body, _ := i.NopBuffReader(i.request.Body)
+	body, _ := i.ReadBody(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
@@ -251,7 +253,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 			i.response.Body.Close()
 		}
 	}()
-	body, _ = i.NopBuffReader(i.response.Body)
+	body, _ = i.ReadBody(i.response.Body)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnResponseEvent(i.response)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
@@ -262,6 +264,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	if err != nil {
 		Log.Log.Println("代理返回响应数据失败：" + err.Error())
 	}
+}
+
+func (i *ProxyHttp) handleWssRequest() {
+	i.handleWsRequest()
 }
 
 func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
@@ -304,8 +310,7 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 		}
 	}
 	i.request = wsRequest
-	i.ssl = false
-	i.handleRequest()
+	i.handleWsRequest()
 	return
 }
 
@@ -323,7 +328,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
-	// 开始ws校验
+	// 开始ws校验,向浏览器返回Sec-WebSocket-Accept头,ws握手完成
 	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
 	if err != nil {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
@@ -342,6 +347,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
+	// 如果是wss忽略证书校验
 	if i.ssl {
 		dialer = Websocket.Dialer{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	}
