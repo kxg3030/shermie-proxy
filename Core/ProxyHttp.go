@@ -51,8 +51,6 @@ func (i *ProxyHttp) handle() {
 		i.port = hostname[len(hostname)-1]
 	}
 	i.request = request
-	x,_ :=httputil.DumpRequest(request,false)
-	fmt.Println(string(x))
 	// 如果是connect方法则是https请求或者ws、wss请求
 	if i.request.Method == http.MethodConnect {
 		i.ssl = true
