@@ -53,7 +53,7 @@ func (i *ProxyServer) Start() error {
 }
 
 func (i *ProxyServer) MultiListen() {
-	for s := 0; s < 5; s++ {
+	for s := 0; s < 10; s++ {
 		go func() {
 			for {
 				conn, err := i.listener.Accept()
