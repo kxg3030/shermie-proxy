@@ -379,12 +379,12 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		msgType, message, err := wsConn.ReadMessage()
 		i.server.OnSendToEvent(msgType, message)
 		if err != nil {
-			Log.Log.Println("接收ws浏览器数据失败-2：" + err.Error())
+			Log.Log.Println("接收wss浏览器数据失败-2：" + err.Error())
 			break
 		}
 		err = targetWsConn.WriteMessage(msgType, message)
 		if err != nil {
-			Log.Log.Println("发送ws服务器数据失败-2：" + err.Error())
+			Log.Log.Println("发送wss服务器数据失败-2：" + err.Error())
 			break
 		}
 	}

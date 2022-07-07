@@ -54,10 +54,10 @@ func main() {
 	}
 	// 注册ws事件函数
 	s.OnPacketEvent = func(msgType int, message []byte) {
-		fmt.Println("客户端请求数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		fmt.Println("服务器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 	}
 	s.OnSendToEvent = func(msgType int, message []byte) {
-		fmt.Println("服务器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		fmt.Println("向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 	}
 	_ = s.Start()
 }
