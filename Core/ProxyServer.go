@@ -73,11 +73,16 @@ func (i *ProxyServer) handle(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	// 预读取一段字节,https、ws、wss读取到的数据为：CONNECT wan.xx.com:8080 HTTP/1.1
-	peek, err := reader.Peek(5)
+	peek, err := reader.Peek(1)
 	if err != nil {
 		return
 	}
 	peekHex := fmt.Sprintf("0x%x", peek[0])
+	// socket5
+	if peekHex == "0x5"{
+
+		return
+	}
 	if _, ok := HttpHeadMap[peekHex]; ok {
 		proxyHttp := NewProxyHttp()
 		proxyHttp.reader = reader

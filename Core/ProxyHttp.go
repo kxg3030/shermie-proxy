@@ -84,10 +84,6 @@ func (i *ProxyHttp) handleRequest() {
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request,}
-	// 处理ws
-	if ok := i.handleWsRequest(); ok {
-		return
-	}
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(httpEntity)
 	if i.response == nil {
