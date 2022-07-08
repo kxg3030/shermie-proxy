@@ -218,7 +218,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	defer func() {
 		_ = sslConn.Close()
 	}()
-	i.reader = bufio.NewReader(sslConn)
+	i.reader = bufio.NewReader(i.conn)
 	i.request, err = http.ReadRequest(i.reader)
 	if err != nil {
 		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
