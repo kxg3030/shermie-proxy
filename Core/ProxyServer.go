@@ -78,9 +78,13 @@ func (i *ProxyServer) handle(conn net.Conn) {
 		return
 	}
 	peekHex := fmt.Sprintf("0x%x", peek[0])
-	// socket5
-	if peekHex == "0x5"{
-
+	if peekHex == "0x5" {
+		proxySocket := NewProxySocket()
+		proxySocket.reader = reader
+		proxySocket.writer = writer
+		proxySocket.conn = conn
+		proxySocket.server = i
+		proxySocket.handle()
 		return
 	}
 	if _, ok := HttpHeadMap[peekHex]; ok {
@@ -90,6 +94,5 @@ func (i *ProxyServer) handle(conn net.Conn) {
 		proxyHttp.conn = conn
 		proxyHttp.server = i
 		proxyHttp.handle()
-		return
 	}
 }
