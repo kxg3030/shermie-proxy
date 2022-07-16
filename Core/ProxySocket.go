@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -172,7 +173,6 @@ func (i *ProxySocket) handle() {
 	}
 	i.port = strconv.Itoa(int(i.ByteToInt(buffer)))
 	hostname = fmt.Sprintf("%s:%s", hostname, i.port)
-	fmt.Println(hostname)
 	// 写入版本号
 	_ = i.writer.WriteByte(Version)
 	if command == 0x03 {
@@ -180,15 +180,16 @@ func (i *ProxySocket) handle() {
 	} else {
 		if i.port == "443" {
 			i.target, err = tls.Dial("tcp", hostname, &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: false,
 			})
 		} else {
 			i.target, err = net.Dial("tcp", hostname)
 		}
 	}
+	Log.Log.Println("待连接的目标服务器：" + hostname)
 	// 写入Rep
 	if err != nil {
-		Log.Log.Println("连接目标服务器失败：" + err.Error())
+		Log.Log.Println("连接目标服务器失败：" + hostname + " " + err.Error())
 		_ = i.writer.WriteByte(0x01)
 		_ = i.writer.Flush()
 		return
@@ -219,20 +220,21 @@ func (i *ProxySocket) handle() {
 		Log.Log.Println("写入socket5握手错误：" + err.Error())
 		return
 	}
-	targetWriter := bufio.NewReadWriter(bufio.NewReader(i.target), bufio.NewWriter(i.target))
 	out := make(chan error, 2)
-	go i.Transport(out, i.reader, targetWriter)
-	go i.Transport(out, targetWriter, i.writer)
-	err = <-out
-	Log.Log.Println("数据交换错误：" + err.Error())
+	if command == 0x01 {
+		go i.Transport(out, i.conn, i.target, "tcp client")
+		go i.Transport(out, i.target, i.conn, "tcp server")
+		err = <-out
+		Log.Log.Println(fmt.Sprintf("Tcp交换数据错误：%s", err.Error()))
+	}
 }
 
-func (i *ProxySocket) Transport(out chan<- error, reader io.Reader, writer io.Writer) {
+func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
 	for {
-		_, err := io.Copy(writer, reader)
-		if err != nil {
-			out <- err
-		}
+		originReader := io.MultiReader(originConn, os.Stdout)
+		targetWriter := io.MultiWriter(targetConn, os.Stdout)
+		_, err := io.Copy(targetWriter, originReader)
+		out <- err
 	}
 }
 
