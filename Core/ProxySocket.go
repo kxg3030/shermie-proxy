@@ -2,13 +2,13 @@ package Core
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"github/shermie-proxy/Log"
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -37,6 +37,25 @@ const (
 	TargetDomain = 0x03
 	Version      = 0x5
 )
+
+type CustomWriter struct {
+}
+
+func (i *CustomWriter) Write(b []byte) (int, error) {
+	buff := bytes.NewBuffer(b)
+	Log.Log.Println(buff)
+	return len(b), nil
+}
+
+func (i *CustomWriter) Read(b []byte) (int, error) {
+	buff := bytes.NewBuffer(b)
+	Log.Log.Println(buff)
+	return len(b), nil
+}
+
+func NewCustomWriter() *CustomWriter {
+	return &CustomWriter{}
+}
 
 func NewProxySocket() *ProxySocket {
 	return &ProxySocket{}
@@ -224,17 +243,23 @@ func (i *ProxySocket) handle() {
 	if command == 0x01 {
 		go i.Transport(out, i.conn, i.target, "tcp client")
 		go i.Transport(out, i.target, i.conn, "tcp server")
-		err = <-out
-		Log.Log.Println(fmt.Sprintf("Tcp交换数据错误：%s", err.Error()))
+		for err := range out {
+			err = err
+			//if err != nil {
+			//	Log.Log.Println("数据交换错误：" + err.Error())
+			//}
+		}
 	}
 }
 
 func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
 	for {
-		originReader := io.MultiReader(originConn, os.Stdout)
-		targetWriter := io.MultiWriter(targetConn, os.Stdout)
+		originReader := io.MultiReader(originConn, NewCustomWriter())
+		targetWriter := io.MultiWriter(targetConn, NewCustomWriter())
 		_, err := io.Copy(targetWriter, originReader)
-		out <- err
+		if err != nil {
+			out <- err
+		}
 	}
 }
 
