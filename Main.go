@@ -32,13 +32,6 @@ func init() {
 	}
 }
 
-func ByteToInt(input []byte) int32 {
-	var result int32
-	result = int32(input[0] & 0xFF)
-	result |= int32(input[1]&0xFF) << 8
-	return result
-}
-
 func main() {
 	// 启动服务
 	s := Core.NewProxyServer(*port)
