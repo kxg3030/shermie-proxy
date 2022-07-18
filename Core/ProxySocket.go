@@ -244,11 +244,6 @@ func (i *ProxySocket) handle() {
 		go i.Transport(out, i.conn, i.target, "tcp client to server")
 		go i.Transport(out, i.target, i.conn, "tcp server to client")
 		<-out
-		//for err := range out {
-		//	if err != nil {
-		//		Log.Log.Println("数据交换错误：" + err.Error())
-		//	}
-		//}
 	}
 }
 
