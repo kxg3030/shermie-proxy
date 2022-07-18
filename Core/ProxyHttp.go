@@ -349,14 +349,14 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 		return "ws"
 	}(), i.request.Host, i.request.URL.Path)
-	if i.request.URL.RawQuery != ""{
-		hostname += "?"+i.request.URL.RawQuery
+	if i.request.URL.RawQuery != "" {
+		hostname += "?" + i.request.URL.RawQuery
 	}
 	// 去掉ws的头部,因为后续工具类会自己生成并附加到请求中
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
-	// 如果是wss忽略证书校验
+	// 如果是wss,客户端忽略证书校验
 	if i.ssl {
 		dialer = Websocket.Dialer{
 			TLSClientConfig: &tls.Config{
