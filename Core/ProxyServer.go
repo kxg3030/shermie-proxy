@@ -69,7 +69,7 @@ func (i *ProxyServer) MultiListen() {
 
 func (i *ProxyServer) handle(conn net.Conn) {
 	defer conn.Close()
-	// 使用bufio读取,原conn的句柄数据被读完(无法再次读取),保存到bufio缓冲区中,只有缓冲区能重复读取
+	// 使用bufio读取,原conn的句柄数据被读完
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	// 预读取一段字节,https、ws、wss读取到的数据为：CONNECT wan.xx.com:8080 HTTP/1.1

@@ -162,12 +162,22 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 
 func (i *ProxyHttp) handleSslRequest() {
 	var err error
-	i.target, err = net.Dial("tcp", i.request.Host)
-	if err != nil {
-		Log.Log.Println("连接目的地址失败：" + err.Error())
-		return
+	if i.port == "443" {
+		i.target, err = tls.Dial("tcp", i.request.Host, &tls.Config{
+			InsecureSkipVerify: false,
+		})
+		if err != nil {
+			Log.Log.Println("连接目的ssl地址失败：" + err.Error())
+			return
+		}
+	} else {
+		i.target, err = net.Dial("tcp", i.request.Host)
+		if err != nil {
+			Log.Log.Println("连接目的地址失败：" + err.Error())
+			return
+		}
 	}
-	i.target.Close()
+	_ = i.target.Close()
 	// 向源连接返回连接成功
 	_, err = i.conn.Write([]byte(ConnectSuccess))
 	if err != nil {
@@ -246,7 +256,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}
 	defer func() {
 		if i.response.Body != nil {
-			i.response.Body.Close()
+			_ = i.response.Body.Close()
 		}
 	}()
 	body, _ = i.ReadBody(i.response.Body)
@@ -256,7 +266,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	// 如果写入的数据比返回的头部指定长度还长,就会报错,这里手动计算返回的数据长度
 	i.response.Header.Set("Content-Length", strconv.Itoa(len(body)))
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
-	err = i.response.Write(sslConn)
+	err = i.response.Write(i.conn)
 	if err != nil {
 		Log.Log.Println("代理返回响应数据失败：" + err.Error())
 	}
@@ -359,32 +369,39 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	go func() {
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
-			i.server.OnPacketEvent(msgType, message)
 			if err != nil {
-				Log.Log.Println("接收ws服务器数据失败-1：" + err.Error())
+				Log.Log.Println("接收wss服务器数据失败-1：" + err.Error())
+				_ = targetWsConn.Close()
 				break
 			}
 			err = wsConn.WriteMessage(msgType, message)
+			i.server.OnPacketEvent(msgType, message)
 			if err != nil {
-				Log.Log.Println("发送ws浏览器数据失败-1：" + err.Error())
+				Log.Log.Println("发送wss浏览器数据失败-1：" + err.Error())
 				break
 			}
 		}
 	}()
 	for {
 		msgType, message, err := wsConn.ReadMessage()
-		i.server.OnSendToEvent(msgType, message)
 		if err != nil {
 			Log.Log.Println("接收wss浏览器数据失败-2：" + err.Error())
+			_ = wsConn.Close()
 			break
 		}
 		err = targetWsConn.WriteMessage(msgType, message)
+		i.server.OnSendToEvent(msgType, message)
 		if err != nil {
 			Log.Log.Println("发送wss服务器数据失败-2：" + err.Error())
 			break
 		}
 	}
 	return true
+}
+
+func (i *ProxyHttp) WsIsConnected(conn *Websocket.Conn) bool {
+	err := conn.WriteMessage(1,nil)
+	return err == nil
 }
 
 func (i *ProxyHttp) RemoveWsHeader() {

@@ -32,13 +32,6 @@ func init() {
 	}
 }
 
-func ByteToInt(input []byte) int32 {
-	var result int32
-	result = int32(input[0] & 0xFF)
-	result |= int32(input[1]&0xFF) << 8
-	return result
-}
-
 func main() {
 	// 启动服务
 	s := Core.NewProxyServer(*port)
@@ -61,10 +54,10 @@ func main() {
 	}
 	// 注册ws事件函数
 	s.OnPacketEvent = func(msgType int, message []byte) {
-		fmt.Println("服务器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 	}
 	s.OnSendToEvent = func(msgType int, message []byte) {
-		fmt.Println("向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		fmt.Println("浏览器向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 	}
 	_ = s.Start()
 }
