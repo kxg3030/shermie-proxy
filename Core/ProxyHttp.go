@@ -373,46 +373,55 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	defer func() {
 		_ = targetWsConn.Close()
 	}()
+	stop := make(chan error, 2)
 	// 读取浏览器数据(长连接)
 	go func() {
+		defer func() {
+			_ = targetWsConn.Close()
+		}()
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
 			if err != nil {
 				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-					Log.Log.Println("wss服务器关闭连接：" + err.Error())
-					_ = targetWsConn.Close()
+					stop <- fmt.Errorf("读取wss服务器数据失败-1：%w", err)
 					break
 				}
-				Log.Log.Println("接收wss服务器数据失败-1：" + err.Error())
+				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
 				break
 			}
 			err = clientWsConn.WriteMessage(msgType, message)
 			i.server.OnPacketEvent(msgType, message)
 			if err != nil {
-				Log.Log.Println("发送wss浏览器数据失败-1：" + err.Error())
+				stop <- fmt.Errorf("发送wss服务器数据失败-1：%w", err)
 				break
 			}
 		}
 	}()
-	for {
-		msgType, message, err := clientWsConn.ReadMessage()
-		if err != nil {
-			if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-				Log.Log.Println("wss浏览器关闭连接：" + err.Error())
-				_ = clientWsConn.Close()
+	go func() {
+		defer func() {
+			_ = clientWsConn.Close()
+		}()
+		for {
+			msgType, message, err := clientWsConn.ReadMessage()
+			if err != nil {
+				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
+					stop <- fmt.Errorf("读取wss浏览器数据失败-1：%w", err)
+					break
+				}
+				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
 				break
 			}
-			Log.Log.Println("接收wss浏览器数据失败-2：" + err.Error())
-			break
+			err = targetWsConn.WriteMessage(msgType, message)
+			i.server.OnSendToEvent(msgType, message)
+			if err != nil {
+				stop <- fmt.Errorf("发送wss浏览器数据失败-1：%w", err)
+				break
+			}
 		}
-		err = targetWsConn.WriteMessage(msgType, message)
-		i.server.OnSendToEvent(msgType, message)
-		if err != nil {
-			Log.Log.Println("发送wss服务器数据失败-2：" + err.Error())
-			break
-		}
-	}
-	return true
+	}()
+	err = <-stop
+	Log.Log.Println(err.Error())
+	return false
 }
 
 func (i *ProxyHttp) WsIsConnected(conn *Websocket.Conn) bool {
