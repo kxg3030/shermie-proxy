@@ -241,14 +241,14 @@ func (i *ProxySocket) handle() {
 	}
 	out := make(chan error, 2)
 	if command == 0x01 {
-		go i.Transport(out, i.conn, i.target, "tcp client")
-		go i.Transport(out, i.target, i.conn, "tcp server")
-		for err := range out {
-			err = err
-			//if err != nil {
-			//	Log.Log.Println("数据交换错误：" + err.Error())
-			//}
-		}
+		go i.Transport(out, i.conn, i.target, "tcp client to server")
+		go i.Transport(out, i.target, i.conn, "tcp server to client")
+		<-out
+		//for err := range out {
+		//	if err != nil {
+		//		Log.Log.Println("数据交换错误：" + err.Error())
+		//	}
+		//}
 	}
 }
 
