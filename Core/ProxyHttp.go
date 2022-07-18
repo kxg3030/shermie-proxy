@@ -44,7 +44,6 @@ func (i *ProxyHttp) handle() {
 	if err != nil {
 		return
 	}
-	// 给个默认端口
 	i.port = "-1"
 	if hostname := strings.Split(request.Host, ":"); len(hostname) > 1 {
 		i.port = hostname[len(hostname)-1]
@@ -164,7 +163,7 @@ func (i *ProxyHttp) handleSslRequest() {
 	var err error
 	if i.port == "443" {
 		i.target, err = tls.Dial("tcp", i.request.Host, &tls.Config{
-			InsecureSkipVerify: false,
+			InsecureSkipVerify: true,
 		})
 		if err != nil {
 			Log.Log.Println("连接目的ssl地址失败：" + err.Error())
