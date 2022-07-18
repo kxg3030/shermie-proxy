@@ -19,6 +19,7 @@ import (
 )
 
 const ConnectSuccess = "HTTP/1.1 200 Connection Established\r\n\r\n"
+const ConnectFailed = "HTTP/1.1 403 Connection Forbidden\r\n\r\n"
 const SslFileHost = "zt.io"
 
 type ProxyHttp struct {
@@ -39,6 +40,7 @@ func NewProxyHttp() *ProxyHttp {
 	return p
 }
 
+// tcp连接处理入口
 func (i *ProxyHttp) handle() {
 	request, err := http.ReadRequest(i.reader)
 	if err != nil {
@@ -60,6 +62,7 @@ func (i *ProxyHttp) handle() {
 	i.handleRequest()
 }
 
+// 处理请求入口
 func (i *ProxyHttp) handleRequest() {
 	var err error
 	if i.request.URL == nil {
@@ -110,6 +113,7 @@ func (i *ProxyHttp) handleRequest() {
 	_ = i.response.Write(i.conn)
 }
 
+// 读取http请求体
 func (i *ProxyHttp) ReadBody(reader io.Reader) ([]byte, error) {
 	if reader == nil {
 		return []byte{}, nil
@@ -118,6 +122,7 @@ func (i *ProxyHttp) ReadBody(reader io.Reader) ([]byte, error) {
 	return body, err
 }
 
+// 移除请求头
 func (i *ProxyHttp) RemoveHeader(header http.Header) {
 	removeHeaders := []string{
 		"Keep-Alive",
@@ -144,6 +149,7 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 	}
 }
 
+// http请求转发
 func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, error) {
 	// 去除一些头部
 	i.RemoveHeader(httpEntity.request.Header)
@@ -159,22 +165,19 @@ func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, er
 	return response, err
 }
 
+// 处理tls请求
 func (i *ProxyHttp) handleSslRequest() {
 	var err error
 	if i.port == "443" {
 		i.target, err = tls.Dial("tcp", i.request.Host, &tls.Config{
 			InsecureSkipVerify: true,
 		})
-		if err != nil {
-			Log.Log.Println("连接目的ssl地址失败：" + err.Error())
-			return
-		}
 	} else {
 		i.target, err = net.Dial("tcp", i.request.Host)
-		if err != nil {
-			Log.Log.Println("连接目的地址失败：" + err.Error())
-			return
-		}
+	}
+	if err != nil {
+		_, err = i.conn.Write([]byte(ConnectFailed))
+		return
 	}
 	_ = i.target.Close()
 	// 向源连接返回连接成功
@@ -187,6 +190,7 @@ func (i *ProxyHttp) handleSslRequest() {
 	i.SslReceiveSend()
 }
 
+// 设置请求头
 func (i *ProxyHttp) SetRequest(request *http.Request) *http.Request {
 	request.Header.Set("Connection", "false")
 	request.URL.Host = request.Host
@@ -194,6 +198,7 @@ func (i *ProxyHttp) SetRequest(request *http.Request) *http.Request {
 	return request
 }
 
+// tls数据接收发送
 func (i *ProxyHttp) SslReceiveSend() {
 	var err error
 	certificate, err := Cache.GetCertificate(i.request.Host, i.port)
@@ -271,10 +276,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}
 }
 
+// 加密wss请求
 func (i *ProxyHttp) handleWssRequest() {
 	i.handleWsRequest()
 }
 
+// 普通ws请求
 func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 	var err error
 	// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
@@ -318,6 +325,7 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 	i.handleWsRequest()
 }
 
+// 处理ws请求
 func (i *ProxyHttp) handleWsRequest() bool {
 	if i.request.Header.Get("Upgrade") == "" {
 		return false
@@ -422,11 +430,13 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	return false
 }
 
+// 连接是否可用
 func (i *ProxyHttp) WsIsConnected(conn *Websocket.Conn) bool {
 	err := conn.WriteMessage(1, nil)
 	return err == nil
 }
 
+// 移除ws请求头
 func (i *ProxyHttp) RemoveWsHeader() {
 	headers := []string{
 		"Upgrade",
