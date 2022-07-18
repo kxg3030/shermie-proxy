@@ -212,7 +212,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	err = sslConn.Handshake()
 	// 如果不是http的ssl请求,则说明是普通ws请求(ws请求会ssl校验报错),这里专门处理这种情况
 	if err != nil {
-		if err == io.EOF || strings.Index(err.Error(), "An existing connection was forcibly closed by the remote host.") != -1 {
+		if err == io.EOF || strings.Index(err.Error(), "closed") != -1 {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
@@ -316,7 +316,6 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 	}
 	i.request = wsRequest
 	i.handleWsRequest()
-	return
 }
 
 func (i *ProxyHttp) handleWsRequest() bool {
@@ -355,7 +354,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
-	// 如果是wss,客户端忽略证书校验
+	// 如果是wss,客户端传输层忽略证书校验
 	if i.ssl {
 		dialer = Websocket.Dialer{
 			TLSClientConfig: &tls.Config{
