@@ -335,27 +335,35 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
 	// 开始ws校验,向浏览器返回Sec-WebSocket-Accept头,ws握手完成
-	wsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
+	clientWsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
 	if err != nil {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
 		return true
 	}
 	defer func() {
-		_ = wsConn.Close()
+		_ = clientWsConn.Close()
 	}()
-	hostname := fmt.Sprintf("%s://%s%s?%s", func() string {
+	hostname := fmt.Sprintf("%s://%s%s", func() string {
 		if i.ssl {
 			return "wss"
 		}
 		return "ws"
-	}(), i.request.Host, i.request.URL.Path, i.request.URL.RawQuery)
+	}(), i.request.Host, i.request.URL.Path)
+	if i.request.URL.RawQuery != ""{
+		hostname += "?"+i.request.URL.RawQuery
+	}
 	// 去掉ws的头部,因为后续工具类会自己生成并附加到请求中
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
 	// 如果是wss忽略证书校验
 	if i.ssl {
-		dialer = Websocket.Dialer{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		dialer = Websocket.Dialer{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			HandshakeTimeout: time.Second * 10,
+		}
 	}
 	targetWsConn, _, err := dialer.Dial(hostname, i.request.Header)
 	if err != nil {
@@ -370,11 +378,15 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
 			if err != nil {
+				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
+					Log.Log.Println("wss服务器关闭连接：" + err.Error())
+					_ = targetWsConn.Close()
+					break
+				}
 				Log.Log.Println("接收wss服务器数据失败-1：" + err.Error())
-				_ = targetWsConn.Close()
 				break
 			}
-			err = wsConn.WriteMessage(msgType, message)
+			err = clientWsConn.WriteMessage(msgType, message)
 			i.server.OnPacketEvent(msgType, message)
 			if err != nil {
 				Log.Log.Println("发送wss浏览器数据失败-1：" + err.Error())
@@ -383,10 +395,14 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 	}()
 	for {
-		msgType, message, err := wsConn.ReadMessage()
+		msgType, message, err := clientWsConn.ReadMessage()
 		if err != nil {
+			if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
+				Log.Log.Println("wss浏览器关闭连接：" + err.Error())
+				_ = clientWsConn.Close()
+				break
+			}
 			Log.Log.Println("接收wss浏览器数据失败-2：" + err.Error())
-			_ = wsConn.Close()
 			break
 		}
 		err = targetWsConn.WriteMessage(msgType, message)
@@ -400,7 +416,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 }
 
 func (i *ProxyHttp) WsIsConnected(conn *Websocket.Conn) bool {
-	err := conn.WriteMessage(1,nil)
+	err := conn.WriteMessage(1, nil)
 	return err == nil
 }
 
