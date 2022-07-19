@@ -35,6 +35,8 @@ type ProxyHttp struct {
 	port     string
 }
 
+type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn)error
+
 func NewProxyHttp() *ProxyHttp {
 	p := &ProxyHttp{}
 	return p
@@ -133,7 +135,6 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 		"Upgrade",
 		"Proxy-Authorization",
 		"Proxy-Authenticate",
-		// 代理层不能转发这个首部
 		"Connection",
 		"Accept-Encoding",
 	}
@@ -395,11 +396,11 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
 				break
 			}
-			err = clientWsConn.WriteMessage(msgType, message)
-			i.server.OnPacketEvent(msgType, message)
+			err = i.server.OnServerPacketEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn)error {
+				return wsConn.WriteMessage(msgType, message)
+			})
 			if err != nil {
-				stop <- fmt.Errorf("发送wss服务器数据失败-1：%w", err)
-				break
+				stop <- fmt.Errorf("发送wss浏览器数据失败-1：%w", err)
 			}
 		}
 	}()
@@ -417,11 +418,11 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
 				break
 			}
-			err = targetWsConn.WriteMessage(msgType, message)
-			i.server.OnSendToEvent(msgType, message)
+			err = i.server.OnClientPacketEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error{
+				return wsConn.WriteMessage(msgType, message)
+			})
 			if err != nil {
 				stop <- fmt.Errorf("发送wss浏览器数据失败-1：%w", err)
-				break
 			}
 		}
 	}()

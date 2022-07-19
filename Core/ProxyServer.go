@@ -3,6 +3,7 @@ package Core
 import (
 	"bufio"
 	"fmt"
+	"github/shermie-proxy/Core/Websocket"
 	"github/shermie-proxy/Log"
 	"net"
 	"net/http"
@@ -18,14 +19,14 @@ var HttpHeadMap = map[string]int{
 }
 
 type ProxyServer struct {
-	port            string
-	listener        *net.TCPListener
-	OnRequestEvent  func(request *http.Request)
-	OnResponseEvent func(response *http.Response)
-	OnReceiveEvent  error
-	OnSendEvent     error
-	OnPacketEvent   func(msgType int, message []byte)
-	OnSendToEvent   func(msgType int, message []byte)
+	port                string
+	listener            *net.TCPListener
+	OnRequestEvent      func(request *http.Request)
+	OnResponseEvent     func(response *http.Response)
+	OnReceiveEvent      error
+	OnSendEvent         error
+	OnServerPacketEvent func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
+	OnClientPacketEvent func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
 }
 
 func NewProxyServer(port string) *ProxyServer {
