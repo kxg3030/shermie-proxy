@@ -1,3 +1,3 @@
-module github/kxg3030/shermie-proxy
+module github.com/kxg3030/shermie-proxy
 
 go 1.16

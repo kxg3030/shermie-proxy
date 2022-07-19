@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
 	"net"
 	"net/http"

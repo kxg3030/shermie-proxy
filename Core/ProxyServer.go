@@ -3,8 +3,8 @@ package Core
 import (
 	"bufio"
 	"fmt"
-	"github/kxg3030/shermie-proxy/Core/Websocket"
-	"github/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Core/Websocket"
+	"github.com/kxg3030/shermie-proxy/Log"
 	"net"
 	"net/http"
 )
