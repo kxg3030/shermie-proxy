@@ -56,7 +56,6 @@ func main() {
 	// 注册ws事件函数
 	s.OnServerPacketEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
-		//return resolve(msgType,message,clientConn)
 		return nil
 	}
 	s.OnClientPacketEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
