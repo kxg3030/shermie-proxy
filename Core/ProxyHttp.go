@@ -35,7 +35,7 @@ type ProxyHttp struct {
 	port     string
 }
 
-type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn)error
+type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn) error
 
 func NewProxyHttp() *ProxyHttp {
 	p := &ProxyHttp{}
@@ -87,9 +87,8 @@ func (i *ProxyHttp) handleRequest() {
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request,}
 	// 处理正常请求,获取响应
-	i.response, err = i.Transport(httpEntity)
+	i.response, err = i.Transport(i.request)
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应")
 		return
@@ -151,13 +150,13 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 }
 
 // http请求转发
-func (i *ProxyHttp) Transport(httpEntity *HttpRequestEntity) (*http.Response, error) {
+func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	// 去除一些头部
-	i.RemoveHeader(httpEntity.request.Header)
+	i.RemoveHeader(request.Header)
 	response, err := (&http.Transport{
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: 60 * time.Second,
-	}).RoundTrip(httpEntity.request)
+	}).RoundTrip(request)
 	if err != nil {
 		return nil, err
 	}
@@ -249,8 +248,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	httpEntity := &HttpRequestEntity{startTime: time.Now(), request: i.request, body: i.request.Body,}
-	i.response, err = i.Transport(httpEntity)
+	i.response, err = i.Transport(i.request)
 	if err != nil {
 		Log.Log.Println("远程服务器响应失败：" + err.Error())
 		return
@@ -396,7 +394,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnServerPacketEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn)error {
+			err = i.server.OnServerPacketEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
@@ -418,7 +416,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnClientPacketEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error{
+			err = i.server.OnClientPacketEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
