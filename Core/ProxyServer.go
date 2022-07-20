@@ -7,6 +7,7 @@ import (
 	"github.com/kxg3030/shermie-proxy/Log"
 	"net"
 	"net/http"
+	"time"
 )
 
 var HttpHeadMap = map[string]int{
@@ -59,7 +60,12 @@ func (i *ProxyServer) MultiListen() {
 			for {
 				conn, err := i.listener.Accept()
 				if err != nil {
-					Log.Log.Println("接受连接失败：" + err.Error())
+					if e, ok := err.(net.Error); ok && e.Temporary() {
+						Log.Log.Println("接受连接失败,重试：" + err.Error())
+						time.Sleep(time.Second / 20)
+					} else {
+						Log.Log.Println("接受连接失败：" + err.Error())
+					}
 					continue
 				}
 				go i.handle(conn)
