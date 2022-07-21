@@ -48,12 +48,12 @@ func main() {
  	// 注册ws事件函数
  	s.OnServerPacketEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
  		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
-        // 手动发送ws消息(适用于需要对消息进行剪裁处理的情况)
+                // 手动发送ws消息(适用于需要对消息进行剪裁处理的情况)
  		return clientConn.WriteMessage(msgType,message)
  	}
  	s.OnClientPacketEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
  		fmt.Println("浏览器向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
-        // 让框架代为处理数据(默认的行为)
+                // 让框架代为处理数据(默认的行为)
  		return resolve(msgType,message,tartgetConn)
  	}
  	_ = s.Start()
