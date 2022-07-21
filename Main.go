@@ -53,11 +53,12 @@ func main() {
 			fmt.Println(string(body))
 		}
 	}
-	// 注册ws事件函数
+	// 注册ws服务器向客户端推送消息事件函数
 	s.OnServerPacketEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 		return clientConn.WriteMessage(msgType,message)
 	}
+	// 注册ws客户端向服务器推送消息事件函数
 	s.OnClientPacketEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("浏览器向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
 		return resolve(msgType,message,tartgetConn)
