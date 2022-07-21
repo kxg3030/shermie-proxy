@@ -225,16 +225,20 @@ func (i *ProxyHttp) SslReceiveSend() {
 		i.handleWsShakehandErr(sslConn.ReadLastTimeBytes())
 		return
 	}
-	// 原连接替换成ssl连接
-	i.conn = sslConn
-	i.ssl = true
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
 	defer func() {
 		_ = sslConn.Close()
 	}()
+	// 原连接替换成ssl连接
+	i.conn = sslConn
+	i.ssl = true
 	i.reader = bufio.NewReader(i.conn)
 	i.request, err = http.ReadRequest(i.reader)
 	if err != nil {
+		if err == io.EOF{
+			Log.Log.Println("浏览器ssl连接断开：" + err.Error())
+			return
+		}
 		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
 		return
 	}
@@ -271,6 +275,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	err = i.response.Write(i.conn)
 	if err != nil {
+		if strings.Contains(err.Error(),"aborted"){
+			Log.Log.Println("代理返回响应数据失败：连接已关闭")
+			return
+		}
 		Log.Log.Println("代理返回响应数据失败：" + err.Error())
 	}
 }

@@ -38,7 +38,7 @@ func main() {
 	s := Core.NewProxyServer(*port)
 	// 注册http事件函数
 	s.OnRequestEvent = func(request *http.Request) {
-
+		//fmt.Println("http请求地址：" + request.URL.Host)
 	}
 	// 注册http事件函数
 	s.OnResponseEvent = func(response *http.Response) {
@@ -50,18 +50,18 @@ func main() {
 				reader, _ = gzip.NewReader(response.Body)
 			}
 			body, _ := io.ReadAll(reader)
-			fmt.Println(string(body))
+			fmt.Println("http返回数据：" + string(body))
 		}
 	}
 	// 注册ws服务器向客户端推送消息事件函数
 	s.OnServerPacketEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
-		return clientConn.WriteMessage(msgType,message)
+		return clientConn.WriteMessage(msgType, message)
 	}
 	// 注册ws客户端向服务器推送消息事件函数
 	s.OnClientPacketEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("浏览器向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
-		return resolve(msgType,message,tartgetConn)
+		return resolve(msgType, message, tartgetConn)
 	}
 	_ = s.Start()
 }

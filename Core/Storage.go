@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-var Cache *Storage
+var Cache = NewStorage()
 
 type Action struct {
 	wg   *sync.WaitGroup
@@ -21,12 +21,10 @@ type Storage struct {
 	buffer map[string]*Action
 }
 
-func init() {
-	if Cache == nil {
-		Cache = &Storage{
-			lock:   &sync.Mutex{},
-			buffer: map[string]*Action{},
-		}
+func NewStorage() *Storage {
+	return &Storage{
+		lock:   &sync.Mutex{},
+		buffer: map[string]*Action{},
 	}
 }
 
@@ -37,12 +35,12 @@ func (i *Storage) GetCertificate(hostname string, port string) (interface{}, err
 	}
 	host, _, err := net.SplitHostPort(hostname)
 	if err != nil {
+		defer i.lock.Unlock()
 		return nil, err
 	}
 	// 按域名将证书分组,同一个域名多次请求只需要生成一次证书;多个不同的域名才会存在协程竞争
 	if action, exist := i.buffer[host]; exist {
-		defer i.lock.Unlock()
-		action.wg.Wait()
+		i.lock.Unlock()
 		return action.cert, nil
 	}
 	// 如果不存在，单个域名只需要生成一次
@@ -50,14 +48,12 @@ func (i *Storage) GetCertificate(hostname string, port string) (interface{}, err
 		wg: &sync.WaitGroup{},
 		fn: GetAction(host),
 	}
-	i.lock.Unlock()
-	i.buffer[host].wg.Add(1)
 	i.buffer[host].cert, i.buffer[host].err = i.buffer[host].fn()
-	i.buffer[host].wg.Done()
+	i.lock.Unlock()
 	defer func() {
-		i.lock.Lock()
-		delete(i.buffer, host)
-		i.lock.Unlock()
+		//i.lock.Lock()
+		//delete(i.buffer, host)
+		//i.lock.Unlock()
 	}()
 	return i.buffer[host].cert, i.buffer[host].err
 }
