@@ -15,8 +15,14 @@ var HttpHeadMap = map[string]int{
 	"0x47": 0x47,
 	// GET
 	"0x43": 0x43,
-	// POST
+	// POST|PUT
 	"0x50": 0x50,
+	// OPTIONS
+	"0x4f": 0x4f,
+	// DELETE
+	"0x44": 0x44,
+	// HEAD
+	"0x48":0x48,
 }
 
 type ProxyServer struct {
@@ -80,7 +86,7 @@ func (i *ProxyServer) handle(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	// 预读取一段字节,https、ws、wss读取到的数据为：CONNECT wan.xx.com:8080 HTTP/1.1
-	peek, err := reader.Peek(1)
+	peek, err := reader.Peek(5)
 	if err != nil {
 		return
 	}
