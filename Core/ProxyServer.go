@@ -23,25 +23,25 @@ var HttpHeadMap = map[string]int{
 	// DELETE
 	"0x44": 0x44,
 	// HEAD
-	"0x48":0x48,
+	"0x48": 0x48,
 }
 
 type ProxyServer struct {
-	port                string
-	listener            *net.TCPListener
-	dns      *dnscache.Resolver
-	OnRequestEvent      func(request *http.Request)
-	OnResponseEvent     func(response *http.Response)
-	OnReceiveEvent      error
-	OnSendEvent         error
-	OnServerPacketEvent func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
-	OnClientPacketEvent func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
+	port                  string
+	listener              *net.TCPListener
+	dns                   *dnscache.Resolver
+	OnRequestEvent        func(request *http.Request)
+	OnResponseEvent       func(response *http.Response)
+	OnServerResponseEvent func(message []byte)
+	OnClientSendEvent     func(message []byte)
+	OnServerPacketEvent   func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
+	OnClientPacketEvent   func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
 }
 
 func NewProxyServer(port string) *ProxyServer {
 	p := &ProxyServer{
 		port: port,
-		dns:dnscache.New(time.Minute * 5),
+		dns:  dnscache.New(time.Minute * 5),
 	}
 	return p
 }
@@ -89,7 +89,7 @@ func (i *ProxyServer) handle(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	// 预读取一段字节,https、ws、wss读取到的数据为：CONNECT wan.xx.com:8080 HTTP/1.1
-	peek, err := reader.Peek(5)
+	peek, err := reader.Peek(1)
 	if err != nil {
 		return
 	}

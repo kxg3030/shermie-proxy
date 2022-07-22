@@ -53,6 +53,14 @@ func main() {
 			fmt.Println("http返回数据：" + string(body))
 		}
 	}
+	// 注册socket5服务器向客户端推送消息事件函数
+	s.OnServerResponseEvent = func(message []byte) {
+		fmt.Println("socket5服务器发送数据", message)
+	}
+	// 注册socket5客户端向服务器推送消息事件函数
+	s.OnClientSendEvent = func(message []byte) {
+		fmt.Println("socket5客户端发送数据", message)
+	}
 	// 注册ws服务器向客户端推送消息事件函数
 	s.OnServerPacketEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
 		fmt.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))

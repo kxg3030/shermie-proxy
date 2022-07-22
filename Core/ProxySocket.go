@@ -2,8 +2,8 @@ package Core
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ProxySocket struct {
@@ -37,25 +38,8 @@ const (
 	TargetDomain = 0x03
 	Version      = 0x5
 )
-
-type CustomWriter struct {
-}
-
-func (i *CustomWriter) Write(b []byte) (int, error) {
-	buff := bytes.NewBuffer(b)
-	Log.Log.Println(buff)
-	return len(b), nil
-}
-
-func (i *CustomWriter) Read(b []byte) (int, error) {
-	buff := bytes.NewBuffer(b)
-	Log.Log.Println(buff)
-	return len(b), nil
-}
-
-func NewCustomWriter() *CustomWriter {
-	return &CustomWriter{}
-}
+const SocketServer = "server"
+const SocketClient = "client"
 
 func NewProxySocket() *ProxySocket {
 	return &ProxySocket{}
@@ -195,14 +179,17 @@ func (i *ProxySocket) handle() {
 	// 写入版本号
 	_ = i.writer.WriteByte(Version)
 	if command == 0x03 {
-		i.target, err = net.Dial("udp", hostname)
+		i.target, err = net.DialTimeout("udp", hostname, time.Second*30)
 	} else {
 		if i.port == "443" {
-			i.target, err = tls.Dial("tcp", hostname, &tls.Config{
-				InsecureSkipVerify: false,
+			dialer := &net.Dialer{
+				Timeout: time.Second * 30,
+			}
+			i.target, err = tls.DialWithDialer(dialer, "tcp", hostname, &tls.Config{
+				InsecureSkipVerify: true,
 			})
 		} else {
-			i.target, err = net.Dial("tcp", hostname)
+			i.target, err = net.DialTimeout("tcp", hostname, time.Second*30)
 		}
 	}
 	Log.Log.Println("待连接的目标服务器：" + hostname)
@@ -241,20 +228,43 @@ func (i *ProxySocket) handle() {
 	}
 	out := make(chan error, 2)
 	if command == 0x01 {
-		go i.Transport(out, i.conn, i.target, "tcp client to server")
-		go i.Transport(out, i.target, i.conn, "tcp server to client")
+		go i.Transport(out, i.conn, i.target, SocketServer)
+		go i.Transport(out, i.target, i.conn, SocketClient)
 		<-out
 	}
 }
 
 func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
+	buff := make([]byte, 10*1024)
 	for {
-		originReader := io.MultiReader(originConn, NewCustomWriter())
-		targetWriter := io.MultiWriter(targetConn, NewCustomWriter())
-		_, err := io.Copy(targetWriter, originReader)
-		if err != nil {
-			out <- err
+		readLen, err := originConn.Read(buff)
+		if readLen > 0 {
+			buff = buff[0:readLen]
+			if role == SocketServer {
+				i.server.OnServerResponseEvent(buff)
+			} else {
+				i.server.OnClientSendEvent(buff)
+			}
+			writeLen, err := targetConn.Write(buff)
+			if writeLen < 0 || readLen < writeLen {
+				writeLen = 0
+				if err == nil {
+					out <- errors.New("写入目标服务器错误-1")
+					break
+				}
+			}
+			if readLen != writeLen {
+				out <- errors.New("写入目标服务器错误-2")
+				break
+			}
 		}
+		if err != nil {
+			if err != io.EOF {
+				out <- errors.New("读取客户端数据错误-1")
+			}
+			break
+		}
+		buff = buff[:]
 	}
 }
 
