@@ -24,15 +24,12 @@ const ConnectFailed = "HTTP/1.1 502 Bad Gateway\r\n\r\n"
 const SslFileHost = "zt.io"
 
 type ProxyHttp struct {
-	server   *ProxyServer
-	writer   *bufio.Writer
-	reader   *bufio.Reader
+	ConnPeer
 	request  *http.Request
 	response *http.Response
 	upgrade  *Websocket.Upgrader
 	target   net.Conn
 	ssl      bool
-	conn     net.Conn
 	port     string
 }
 
@@ -45,7 +42,7 @@ func NewProxyHttp() *ProxyHttp {
 }
 
 // tcp连接处理入口
-func (i *ProxyHttp) handle() {
+func (i *ProxyHttp) Handle() {
 	request, err := http.ReadRequest(i.reader)
 	if err != nil {
 		return

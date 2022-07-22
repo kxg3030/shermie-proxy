@@ -1,7 +1,6 @@
 package Core
 
 import (
-	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -15,13 +14,10 @@ import (
 )
 
 type ProxySocket struct {
-	server   *ProxyServer
-	writer   *bufio.Writer
-	reader   *bufio.Reader
+	ConnPeer
 	request  *http.Request
 	response *http.Response
 	target   net.Conn
-	conn     net.Conn
 	port     string
 }
 
@@ -45,7 +41,7 @@ func NewProxySocket() *ProxySocket {
 	return &ProxySocket{}
 }
 
-func (i *ProxySocket) handle() {
+func (i *ProxySocket) Handle() {
 	// 读取版本号
 	version, err := i.reader.ReadByte()
 	if err != nil {

@@ -1,7 +1,13 @@
 package Core
 
-import "net"
+import (
+	"bufio"
+	"net"
+)
 
-type ConnClient struct {
-	conn net.Conn
+type ConnPeer struct {
+	conn   net.Conn
+	writer *bufio.Writer
+	reader *bufio.Reader
+	server *ProxyServer
 }

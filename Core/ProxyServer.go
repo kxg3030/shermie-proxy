@@ -3,6 +3,7 @@ package Core
 import (
 	"bufio"
 	"fmt"
+	"github.com/kxg3030/shermie-proxy/Contract"
 	"github.com/kxg3030/shermie-proxy/Core/Websocket"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"github.com/viki-org/dnscache"
@@ -10,21 +11,6 @@ import (
 	"net/http"
 	"time"
 )
-
-var HttpHeadMap = map[string]int{
-	// CONNECT
-	"0x47": 0x47,
-	// GET
-	"0x43": 0x43,
-	// POST|PUT
-	"0x50": 0x50,
-	// OPTIONS
-	"0x4f": 0x4f,
-	// DELETE
-	"0x44": 0x44,
-	// HEAD
-	"0x48": 0x48,
-}
 
 type ProxyServer struct {
 	port                  string
@@ -84,6 +70,7 @@ func (i *ProxyServer) MultiListen() {
 }
 
 func (i *ProxyServer) handle(conn net.Conn) {
+	var process Contract.IServerProcesser
 	defer conn.Close()
 	// 使用bufio读取,原conn的句柄数据被读完
 	reader := bufio.NewReader(conn)
@@ -94,21 +81,21 @@ func (i *ProxyServer) handle(conn net.Conn) {
 		return
 	}
 	peekHex := fmt.Sprintf("0x%x", peek[0])
-	if peekHex == "0x5" {
-		proxySocket := NewProxySocket()
-		proxySocket.reader = reader
-		proxySocket.writer = writer
-		proxySocket.conn = conn
-		proxySocket.server = i
-		proxySocket.handle()
+	peer := ConnPeer{
+		server: i,
+		conn:   conn,
+		writer: writer,
+		reader: reader,
+	}
+	switch peekHex {
+	case "0x47", "0x43", "0x50", "0x4f", "0x44", "0x48":
+		process = &ProxyHttp{ConnPeer: peer}
+		break
+	case "0x5":
+		process = &ProxySocket{ConnPeer: peer}
+	}
+	if process == nil {
 		return
 	}
-	if _, ok := HttpHeadMap[peekHex]; ok {
-		proxyHttp := NewProxyHttp()
-		proxyHttp.reader = reader
-		proxyHttp.writer = writer
-		proxyHttp.conn = conn
-		proxyHttp.server = i
-		proxyHttp.handle()
-	}
+	process.Handle()
 }
