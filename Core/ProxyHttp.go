@@ -3,6 +3,7 @@ package Core
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Core/Websocket"
@@ -19,7 +20,7 @@ import (
 )
 
 const ConnectSuccess = "HTTP/1.1 200 Connection Established\r\n\r\n"
-const ConnectFailed = "HTTP/1.1 403 Connection Forbidden\r\n\r\n"
+const ConnectFailed = "HTTP/1.1 502 Bad Gateway\r\n\r\n"
 const SslFileHost = "zt.io"
 
 type ProxyHttp struct {
@@ -38,7 +39,8 @@ type ProxyHttp struct {
 type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn) error
 
 func NewProxyHttp() *ProxyHttp {
-	p := &ProxyHttp{}
+	p := &ProxyHttp{
+	}
 	return p
 }
 
@@ -156,6 +158,7 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	response, err := (&http.Transport{
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: 60 * time.Second,
+		DialContext:           i.DialContext(),
 	}).RoundTrip(request)
 	if err != nil {
 		return nil, err
@@ -217,11 +220,11 @@ func (i *ProxyHttp) SslReceiveSend() {
 	err = sslConn.Handshake()
 	// 如果不是http的ssl请求,则说明是普通ws请求(ws请求会ssl校验报错),这里专门处理这种情况
 	if err != nil {
+		i.ssl = false
 		if err == io.EOF || strings.Index(err.Error(), "closed") != -1 {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
-		i.ssl = false
 		i.handleWsShakehandErr(sslConn.ReadLastTimeBytes())
 		return
 	}
@@ -235,7 +238,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.reader = bufio.NewReader(i.conn)
 	i.request, err = http.ReadRequest(i.reader)
 	if err != nil {
-		if err == io.EOF{
+		if err == io.EOF {
 			Log.Log.Println("浏览器ssl连接断开：" + err.Error())
 			return
 		}
@@ -275,7 +278,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	err = i.response.Write(i.conn)
 	if err != nil {
-		if strings.Contains(err.Error(),"aborted"){
+		if strings.Contains(err.Error(), "aborted") {
 			Log.Log.Println("代理返回响应数据失败：连接已关闭")
 			return
 		}
@@ -378,6 +381,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			HandshakeTimeout: time.Second * 10,
 		}
 	}
+	dialer.NetDialContext = i.DialContext()
 	targetWsConn, _, err := dialer.Dial(hostname, i.request.Header)
 	if err != nil {
 		Log.Log.Println("连接ws服务器失败：" + err.Error())
@@ -435,6 +439,21 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	err = <-stop
 	Log.Log.Println(err.Error())
 	return false
+}
+
+func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
+	return func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
+		separator := strings.LastIndex(addr, ":")
+		ipList, err := i.server.dns.Fetch(addr[:separator])
+		var ip string
+		for _, item := range ipList {
+			ip = item.String()
+			if !strings.Contains(ip, ":") {
+				break
+			}
+		}
+		return net.Dial("tcp", ip+addr[separator:])
+	}
 }
 
 // 连接是否可用

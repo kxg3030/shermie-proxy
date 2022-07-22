@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Core/Websocket"
 	"github.com/kxg3030/shermie-proxy/Log"
+	"github.com/viki-org/dnscache"
 	"net"
 	"net/http"
 	"time"
@@ -28,6 +29,7 @@ var HttpHeadMap = map[string]int{
 type ProxyServer struct {
 	port                string
 	listener            *net.TCPListener
+	dns      *dnscache.Resolver
 	OnRequestEvent      func(request *http.Request)
 	OnResponseEvent     func(response *http.Response)
 	OnReceiveEvent      error
@@ -39,6 +41,7 @@ type ProxyServer struct {
 func NewProxyServer(port string) *ProxyServer {
 	p := &ProxyServer{
 		port: port,
+		dns:dnscache.New(time.Minute * 5),
 	}
 	return p
 }
@@ -61,7 +64,7 @@ func (i *ProxyServer) Start() error {
 }
 
 func (i *ProxyServer) MultiListen() {
-	for s := 0; s < 10; s++ {
+	for s := 0; s < 5; s++ {
 		go func() {
 			for {
 				conn, err := i.listener.Accept()

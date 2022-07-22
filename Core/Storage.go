@@ -38,7 +38,6 @@ func (i *Storage) GetCertificate(hostname string, port string) (interface{}, err
 		defer i.lock.Unlock()
 		return nil, err
 	}
-	// 按域名将证书分组,同一个域名多次请求只需要生成一次证书;多个不同的域名才会存在协程竞争
 	if action, exist := i.buffer[host]; exist {
 		i.lock.Unlock()
 		return action.cert, nil
