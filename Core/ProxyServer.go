@@ -44,9 +44,19 @@ func (i *ProxyServer) Start() error {
 		return fmt.Errorf("%w", err)
 	}
 	i.listener = listener
-	Log.Log.Println("服务监听端口：" + i.port + "(如果是新生成的证书文件，请先手动将根证书.crt文件导入到系统中——by.失色天空)")
+	i.Logo()
 	i.MultiListen()
 	select {}
+}
+
+func (i *ProxyServer) Logo() {
+	logo := ` ______     __  __     ______     ______     __    __     __     ______    
+/\  ___\   /\ \_\ \   /\  ___\   /\  == \   /\ "-./  \   /\ \   /\  ___\   
+\ \___  \  \ \  __ \  \ \  __\   \ \  __<   \ \ \-./\ \  \ \ \  \ \  __\   
+ \/\_____\  \ \_\ \_\  \ \_____\  \ \_\ \_\  \ \_\ \ \_\  \ \_\  \ \_____\ 
+  \/_____/   \/_/\/_/   \/_____/   \/_/ /_/   \/_/  \/_/   \/_/   \/_____/ `
+	fmt.Println(logo)
+	fmt.Println("服务监听端口：" + i.port + "（如果是新生成的证书文件，请先手动将根证书.crt文件导入到系统中）")
 }
 
 func (i *ProxyServer) MultiListen() {
