@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/kxg3030/shermie-proxy/Constant"
 	"github.com/kxg3030/shermie-proxy/Utils"
 	"math/big"
 	"net"
@@ -36,17 +35,22 @@ func NewCertificate() *Certificate {
 func (i *Certificate) Init() error {
 	var err error
 	var certBlock, keyBlock *pem.Block
+	certFile := "./cert.crt"
+	keyFile := "./cert.key"
 	// 如果根证书不存在,则生成
-	if !Utils.FileExist("./cert.crt") {
+	if !Utils.FileExist(certFile) {
 		// 生成根pem文件
 		certBlock, keyBlock, err = i.GenerateRootPemFile("Shermie")
 		if err != nil {
 			return fmt.Errorf("生成根证书文件失败：%w", err)
 		}
 	} else {
+		// 读取文件内容
+		certFileByte, _ := os.ReadFile(certFile)
+		keyFileByte, _ := os.ReadFile(keyFile)
 		// 根证书存在,则使用
-		certBlock, _ = pem.Decode([]byte(Constant.RootCert))
-		keyBlock, _ = pem.Decode([]byte(Constant.RootPriKey))
+		certBlock, _ = pem.Decode(certFileByte)
+		keyBlock, _ = pem.Decode(keyFileByte)
 	}
 	i.RootKeyStr = keyBlock.Bytes
 	i.RootCaStr = certBlock.Bytes
