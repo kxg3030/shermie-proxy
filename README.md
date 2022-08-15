@@ -27,7 +27,7 @@ func init() {
 }
 func main() {
          // 启动服务
-   	s := Core.NewProxyServer(*port)
+   	s := Core.NewProxyServer(":9090")
    	// 注册http事件函数
    	s.OnRequestEvent = func(request *http.Request) {
    		//fmt.Println("http请求地址：" + request.URL.Host)
