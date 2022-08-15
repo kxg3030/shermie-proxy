@@ -156,6 +156,7 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: 60 * time.Second,
 		DialContext:           i.DialContext(),
+		TLSClientConfig:&tls.Config{InsecureSkipVerify:true},
 	}).RoundTrip(request)
 	if err != nil {
 		return nil, err
