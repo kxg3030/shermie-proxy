@@ -67,10 +67,3 @@ func main() {
 }
 ```
 
-#### 三、问题
-如果遇到报错`sslConn.ReadLastTimeBytes undefined (type *tls.Conn has no field or method ReadLastTimeBytes)`,将下面的方法添加到你的gopath路径下src/crypto/tls/conn.go文件中,这个方法是获取服务器与客户端tls握手后，客户端发送的最后一帧原始数据。
-```go
-func (c *Conn) ReadLastTimeBytes() []byte { 
-    return c.rawInput.Bytes() 
-}
-```
