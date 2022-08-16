@@ -7,7 +7,6 @@ import (
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -15,8 +14,6 @@ import (
 
 type ProxySocket struct {
 	ConnPeer
-	request  *http.Request
-	response *http.Response
 	target   net.Conn
 	port     string
 }

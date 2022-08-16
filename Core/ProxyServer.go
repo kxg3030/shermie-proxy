@@ -13,6 +13,7 @@ import (
 )
 
 type ProxyServer struct {
+	nagle                 bool
 	port                  string
 	listener              *net.TCPListener
 	dns                   *dnscache.Resolver
@@ -24,12 +25,12 @@ type ProxyServer struct {
 	OnClientPacketEvent   func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
 }
 
-func NewProxyServer(port string) *ProxyServer {
-	p := &ProxyServer{
-		port: port,
-		dns:  dnscache.New(time.Minute * 5),
+func NewProxyServer(port string, nagle bool) *ProxyServer {
+	return &ProxyServer{
+		port:  port,
+		dns:   dnscache.New(time.Minute * 5),
+		nagle: nagle,
 	}
-	return p
 }
 
 func (i *ProxyServer) Start() error {
@@ -93,21 +94,15 @@ func (i *ProxyServer) handle(conn net.Conn) {
 		return
 	}
 	peekHex := fmt.Sprintf("0x%x", peek[0])
-	peer := ConnPeer{
-		server: i,
-		conn:   conn,
-		writer: writer,
-		reader: reader,
-	}
+	peer := ConnPeer{server: i, conn: conn, writer: writer, reader: reader,}
 	switch peekHex {
 	case "0x47", "0x43", "0x50", "0x4f", "0x44", "0x48":
 		process = &ProxyHttp{ConnPeer: peer}
 		break
 	case "0x5":
 		process = &ProxySocket{ConnPeer: peer}
-	}
-	if process == nil {
-		return
+	default:
+		process = &ProxyTcp{ConnPeer: peer}
 	}
 	process.Handle()
 }

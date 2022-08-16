@@ -9,20 +9,12 @@ import (
 	"github.com/kxg3030/shermie-proxy/Core/Websocket"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-var port *string
-
 func init() {
-	port = flag.String("port", "9090", "listen port")
-	flag.Parse()
-	if *port == "0" {
-		log.Fatal("port required")
-	}
 	// 初始化日志
 	Log.NewLogger().Init()
 	// 初始化根证书
@@ -34,8 +26,15 @@ func init() {
 }
 
 func main() {
+	port := flag.String("port", "9090", "listen port")
+	nagle := flag.Bool("nagle", true, "connect remote use nagle algorithm")
+	flag.Parse()
+	if *port == "0" {
+		Log.Log.Fatal("port required")
+		return
+	}
 	// 启动服务
-	s := Core.NewProxyServer(*port)
+	s := Core.NewProxyServer(*port, *nagle)
 	// 注册http事件函数
 	s.OnRequestEvent = func(request *http.Request) {
 		//fmt.Println("http请求地址：" + request.URL.Host)

@@ -156,7 +156,7 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: 60 * time.Second,
 		DialContext:           i.DialContext(),
-		TLSClientConfig:&tls.Config{InsecureSkipVerify:true},
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}).RoundTrip(request)
 	if err != nil {
 		return nil, err
@@ -230,7 +230,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 	defer func() {
 		_ = sslConn.Close()
 	}()
-	// 原连接替换成ssl连接
 	i.conn = sslConn
 	i.ssl = true
 	i.reader = bufio.NewReader(i.conn)
@@ -450,7 +449,17 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 				break
 			}
 		}
-		return net.Dial("tcp", ip+addr[separator:])
+		tcpAddr, _ := net.ResolveTCPAddr("tcp", ip+addr[separator:])
+		conn, err = net.DialTCP("tcp", nil, tcpAddr)
+		if err != nil {
+			return conn, err
+		}
+		// 是否关闭nagle算法
+		tcpConn, ok := conn.(*net.TCPConn)
+		if ok {
+			_ = tcpConn.SetNoDelay(i.server.nagle)
+		}
+		return tcpConn, err
 	}
 }
 
