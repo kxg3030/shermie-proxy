@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Core/Websocket"
 	"github.com/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Utils"
 	"io"
 	"io/ioutil"
 	"net"
@@ -223,7 +224,9 @@ func (i *ProxyHttp) SslReceiveSend() {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
-		i.handleWsShakehandErr(sslConn.ReadLastTimeBytes())
+		// 反射读取最后一帧原始数据
+		lastFrameByte := Utils.GetLastTimeFrame(sslConn, "rawInput")
+		i.handleWsShakehandErr(lastFrameByte)
 		return
 	}
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
