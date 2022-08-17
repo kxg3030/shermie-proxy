@@ -400,17 +400,17 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			msgType, message, err := targetWsConn.ReadMessage()
 			if err != nil {
 				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-					stop <- fmt.Errorf("读取wss服务器数据失败-1：%w", err)
+					stop <- fmt.Errorf("读取ws服务器数据失败-1：%w", err)
 					break
 				}
-				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
+				stop <- fmt.Errorf("读取ws服务器数据失败-2：%w", err)
 				break
 			}
 			err = i.server.OnWsResponseEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
-				stop <- fmt.Errorf("发送wss浏览器数据失败-1：%w", err)
+				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}
 		}
 	}()
@@ -422,17 +422,17 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			msgType, message, err := clientWsConn.ReadMessage()
 			if err != nil {
 				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-					stop <- fmt.Errorf("读取wss浏览器数据失败-1：%w", err)
+					stop <- fmt.Errorf("读取ws浏览器数据失败-1：%w", err)
 					break
 				}
-				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
+				stop <- fmt.Errorf("读取ws浏览器数据失败-2：%w", err)
 				break
 			}
 			err = i.server.OnWsRequestEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
-				stop <- fmt.Errorf("发送wss浏览器数据失败-1：%w", err)
+				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}
 		}
 	}()
