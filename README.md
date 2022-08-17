@@ -41,7 +41,7 @@ func init() {
 }
 
 func main() {
-	port := flag.String("port", "9090", "listen port")
+    port := flag.String("port", "9090", "listen port")
 	nagle := flag.Bool("nagle", true, "connect remote use nagle algorithm")
 	proxy := flag.String("proxy", "0", "tcp prxoy remote host")
 	flag.Parse()
@@ -68,26 +68,25 @@ func main() {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
 	}
-	// 注册socket5服务器向客户端推送消息事件函数
+	// 注册socket5服务器推送消息事件函数
 	s.OnSocket5ResponseEvent = func(message []byte) {
 		Log.Log.Println("Socket5ResponseEvent：" + string(message))
 	}
-	// 注册socket5客户端向服务器推送消息事件函数
+	// 注册socket5客户端推送消息事件函数
 	s.OnSocket5RequestEvent = func(message []byte) {
 		Log.Log.Println("Socket5RequestEvent：" + string(message))
 	}
-	// 注册ws服务器向客户端推送消息事件函数
-	s.OnWsRequestEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
+	// 注册ws客户端推送消息事件函数
+	s.OnWsRequestEvent = func(msgType int, message []byte, target *Websocket.Conn, resolve Core.ResolveWs) error {
 		Log.Log.Println("WsRequestEvent：" + string(message))
-		return clientConn.WriteMessage(msgType, message)
+		return target.WriteMessage(msgType, message)
 	}
-	// 注册ws客户端向服务器推送消息事件函数
-	s.OnWsResponseEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
+	// 注册w服务器推送消息事件函数
+	s.OnWsResponseEvent = func(msgType int, message []byte, client *Websocket.Conn, resolve Core.ResolveWs) error {
 		Log.Log.Println("WsResponseEvent：" + string(message))
-		return resolve(msgType, message, tartgetConn)
+		return resolve(msgType, message, client)
 	}
 	_ = s.Start()
-}
 }
 ```
 - 参数
