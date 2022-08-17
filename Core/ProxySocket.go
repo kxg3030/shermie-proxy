@@ -234,9 +234,9 @@ func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetCon
 		if readLen > 0 {
 			buff = buff[0:readLen]
 			if role == SocketServer {
-				i.server.OnServerResponseEvent(buff)
+				i.server.OnSocket5ResponseEvent(buff)
 			} else {
-				i.server.OnClientSendEvent(buff)
+				i.server.OnSocket5RequestEvent(buff)
 			}
 			writeLen, err := targetConn.Write(buff)
 			if writeLen < 0 || readLen < writeLen {

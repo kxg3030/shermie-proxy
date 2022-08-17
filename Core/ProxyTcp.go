@@ -1,10 +1,14 @@
 package Core
 
 import (
+	"errors"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
 	"net"
 )
+
+const TcpServer = "server"
+const TcpClient = "client"
 
 type ProxyTcp struct {
 	ConnPeer
@@ -33,18 +37,42 @@ func (i *ProxyTcp) Handle() {
 		_ = conn.SetNoDelay(false)
 	}
 	stop := make(chan error, 2)
-	go func() {
-		_, err := io.Copy(i.ConnPeer.conn, conn)
-		if err != nil {
-			stop <- err
-		}
-	}()
-	go func() {
-		_, err := io.Copy(conn, i.ConnPeer.conn)
-		if err != nil {
-			stop <- err
-		}
-	}()
+	go i.Transport(stop, i.ConnPeer.conn, conn, TcpClient)
+	go i.Transport(stop, conn, i.ConnPeer.conn, TcpServer)
 	err = <-stop
 	Log.Log.Println("转发tcp数据错误：" + err.Error())
+}
+
+func (i *ProxyTcp) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
+	buff := make([]byte, 4096)
+	for {
+		readLen, err := originConn.Read(buff)
+		if readLen > 0 {
+			buff = buff[0:readLen]
+			if role == TcpServer {
+				i.server.OnTcpServerStreamEvent(buff)
+			} else {
+				i.server.OnTcpClientStreamEvent(buff)
+			}
+			writeLen, err := targetConn.Write(buff)
+			if writeLen < 0 || readLen < writeLen {
+				writeLen = 0
+				if err == nil {
+					out <- errors.New("tcp代理写入目标服务器错误-1")
+					break
+				}
+			}
+			if readLen != writeLen {
+				out <- errors.New("tcp代理写入目标服务器错误-2")
+				break
+			}
+		}
+		if err != nil {
+			if err != io.EOF {
+				out <- errors.New("tcp代理读取客户端数据错误-1")
+			}
+			break
+		}
+		buff = buff[:]
+	}
 }

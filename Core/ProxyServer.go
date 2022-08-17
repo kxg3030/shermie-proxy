@@ -12,18 +12,32 @@ import (
 	"time"
 )
 
+type HttpRequestEvent func(request *http.Request)
+type HttpResponseEvent func(response *http.Response)
+
+type Socket5ResponseEvent func(message []byte)
+type Socket5RequestEvent func(message []byte)
+
+type WsRequestEvent func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
+type WsResponseEvent func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
+
+type TcpServerStreamEvent func(message []byte)
+type TcpClientStreamEvent func(message []byte)
+
 type ProxyServer struct {
-	nagle                 bool
-	proxy                 string
-	port                  string
-	listener              *net.TCPListener
-	dns                   *dnscache.Resolver
-	OnRequestEvent        func(request *http.Request)
-	OnResponseEvent       func(response *http.Response)
-	OnServerResponseEvent func(message []byte)
-	OnClientSendEvent     func(message []byte)
-	OnServerPacketEvent   func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
-	OnClientPacketEvent   func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
+	nagle                  bool
+	proxy                  string
+	port                   string
+	listener               *net.TCPListener
+	dns                    *dnscache.Resolver
+	OnHttpRequestEvent     HttpRequestEvent
+	OnHttpResponseEvent    HttpResponseEvent
+	OnWsRequestEvent       WsRequestEvent
+	OnWsResponseEvent      WsResponseEvent
+	OnSocket5ResponseEvent Socket5ResponseEvent
+	OnSocket5RequestEvent  Socket5RequestEvent
+	OnTcpServerStreamEvent TcpServerStreamEvent
+	OnTcpClientStreamEvent TcpClientStreamEvent
 }
 
 func NewProxyServer(port string, nagle bool, proxy string) *ProxyServer {

@@ -85,7 +85,7 @@ func (i *ProxyHttp) handleRequest() {
 	}
 	body, _ := i.ReadBody(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnRequestEvent(i.request)
+	i.server.OnHttpRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(i.request)
@@ -104,7 +104,7 @@ func (i *ProxyHttp) handleRequest() {
 	}
 	body, _ = i.ReadBody(i.response.Body)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnResponseEvent(i.response)
+	i.server.OnHttpResponseEvent(i.response)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	defer func() {
 		if i.response.Body != nil {
@@ -253,7 +253,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	i.request = i.SetRequest(i.request)
 	body, _ := i.ReadBody(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnRequestEvent(i.request)
+	i.server.OnHttpRequestEvent(i.request)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.response, err = i.Transport(i.request)
 	if err != nil {
@@ -271,7 +271,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}()
 	body, _ = i.ReadBody(i.response.Body)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnResponseEvent(i.response)
+	i.server.OnHttpResponseEvent(i.response)
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	// 如果写入的数据比返回的头部指定长度还长,就会报错,这里手动计算返回的数据长度
 	i.response.Header.Set("Content-Length", strconv.Itoa(len(body)))
@@ -406,7 +406,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnServerPacketEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
+			err = i.server.OnWsRequestEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
@@ -428,7 +428,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnClientPacketEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
+			err = i.server.OnWsResponseEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
