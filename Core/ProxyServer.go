@@ -14,6 +14,7 @@ import (
 
 type ProxyServer struct {
 	nagle                 bool
+	proxy                 string
 	port                  string
 	listener              *net.TCPListener
 	dns                   *dnscache.Resolver
@@ -25,11 +26,12 @@ type ProxyServer struct {
 	OnClientPacketEvent   func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
 }
 
-func NewProxyServer(port string, nagle bool) *ProxyServer {
+func NewProxyServer(port string, nagle bool, proxy string) *ProxyServer {
 	return &ProxyServer{
 		port:  port,
 		dns:   dnscache.New(time.Minute * 5),
 		nagle: nagle,
+		proxy: proxy,
 	}
 }
 
