@@ -9,7 +9,6 @@ import (
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -35,11 +34,11 @@ func main() {
 	}
 	// 启动服务
 	s := Core.NewProxyServer(*port, *nagle, *proxy)
-	// 注册http事件函数
+	// 注册http客户端请求事件函数
 	s.OnHttpRequestEvent = func(request *http.Request) {
-		//Log.Log.Println("http请求地址：" + request.URL.Host)
+
 	}
-	// 注册http事件函数
+	// 注册http服务器响应事件函数
 	s.OnHttpResponseEvent = func(response *http.Response) {
 		contentType := response.Header.Get("Content-Type")
 		var reader io.Reader
@@ -49,25 +48,25 @@ func main() {
 				reader, _ = gzip.NewReader(response.Body)
 			}
 			body, _ := io.ReadAll(reader)
-			Log.Log.Println("http返回数据：" + string(body))
+			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
 	}
 	// 注册socket5服务器向客户端推送消息事件函数
 	s.OnSocket5ResponseEvent = func(message []byte) {
-		Log.Log.Println("socket5服务器发送数据", message)
+		Log.Log.Println("Socket5ResponseEvent：" + string(message))
 	}
 	// 注册socket5客户端向服务器推送消息事件函数
 	s.OnSocket5RequestEvent = func(message []byte) {
-		Log.Log.Println("socket5客户端发送数据", message)
+		Log.Log.Println("Socket5RequestEvent：" + string(message))
 	}
 	// 注册ws服务器向客户端推送消息事件函数
 	s.OnWsRequestEvent = func(msgType int, message []byte, clientConn *Websocket.Conn, resolve Core.ResolveWs) error {
-		Log.Log.Println("服务器向浏览器响应数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		Log.Log.Println("WsRequestEvent：" + string(message))
 		return clientConn.WriteMessage(msgType, message)
 	}
 	// 注册ws客户端向服务器推送消息事件函数
 	s.OnWsResponseEvent = func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve Core.ResolveWs) error {
-		Log.Log.Println("浏览器向服务器发送数据：" + string(message) + "消息号：" + strconv.Itoa(msgType))
+		Log.Log.Println("WsResponseEvent：" + string(message))
 		return resolve(msgType, message, tartgetConn)
 	}
 	_ = s.Start()

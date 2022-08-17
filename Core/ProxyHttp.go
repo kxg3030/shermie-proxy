@@ -406,7 +406,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss服务器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsRequestEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
+			err = i.server.OnWsResponseEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
@@ -428,7 +428,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取wss浏览器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsResponseEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
+			err = i.server.OnWsRequestEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
 				return wsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
