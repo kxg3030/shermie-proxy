@@ -27,7 +27,7 @@ func init() {
 }
 func main() {
          // 启动服务
-   	s := Core.NewProxyServer(":9090")
+   	s := Core.NewProxyServer(*port, *nagle, *proxy)
    	// 注册http事件函数
    	s.OnRequestEvent = func(request *http.Request) {
    		//fmt.Println("http请求地址：" + request.URL.Host)
@@ -66,4 +66,10 @@ func main() {
    	_ = s.Start()
 }
 ```
+- 参数
 
+--port:代理服务监听的端口,默认为9090
+
+--proxy:代理tcp服务时,目的服务器的ip和端口,默认为0,仅tcp代理使用
+
+--nagle:是否开启nagle数据合并算法,默认true
