@@ -30,16 +30,15 @@ func NewStorage() *Storage {
 
 func (i *Storage) GetCertificate(hostname string, port string) (interface{}, error) {
 	i.lock.Lock()
+	defer i.lock.Unlock()
 	if strings.Index(hostname, ":") == -1 {
 		hostname += ":" + port
 	}
 	host, _, err := net.SplitHostPort(hostname)
 	if err != nil {
-		defer i.lock.Unlock()
 		return nil, err
 	}
 	if action, exist := i.buffer[host]; exist {
-		i.lock.Unlock()
 		return action.cert, nil
 	}
 	// 如果不存在，单个域名只需要生成一次
@@ -48,7 +47,6 @@ func (i *Storage) GetCertificate(hostname string, port string) (interface{}, err
 		fn: GetAction(host),
 	}
 	i.buffer[host].cert, i.buffer[host].err = i.buffer[host].fn()
-	i.lock.Unlock()
 	defer func() {
 		//i.lock.Lock()
 		//delete(i.buffer, host)
