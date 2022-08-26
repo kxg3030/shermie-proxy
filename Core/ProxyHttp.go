@@ -90,7 +90,7 @@ func (i *ProxyHttp) handleRequest() {
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
-		Log.Log.Println("远程服务器无响应")
+		Log.Log.Println("远程服务器无响应-1")
 		return
 	}
 	defer func() {
@@ -230,9 +230,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 		return
 	}
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
-	defer func() {
-		_ = sslConn.Close()
-	}()
 	i.conn = sslConn
 	i.ssl = true
 	i.reader = bufio.NewReader(i.conn)
@@ -261,7 +258,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 		return
 	}
 	if i.response == nil {
-		Log.Log.Println("远程服务器无响应")
+		Log.Log.Println("远程服务器无响应-2")
 		return
 	}
 	defer func() {
