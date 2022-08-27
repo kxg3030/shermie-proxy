@@ -115,6 +115,7 @@ func (i *Certificate) GeneratePem(host string) ([]byte, []byte, error) {
 	return pem.EncodeToMemory(certBlock), pem.EncodeToMemory(priKeyBlock), err
 }
 
+// 生成新的根证书
 func (i *Certificate) GenerateRootPemFile(host string) (*pem.Block, *pem.Block, error) {
 	max := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, max)
