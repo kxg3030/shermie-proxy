@@ -1,6 +1,7 @@
 package Core
 
 import (
+	"crypto/tls"
 	"errors"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
@@ -18,7 +19,7 @@ type ProxyTcp struct {
 
 func (i *ProxyTcp) Handle() {
 	defer func() {
-		i.ConnPeer.conn.Close()
+		_ = i.ConnPeer.conn.Close()
 	}()
 	tcpAddr, err := net.ResolveTCPAddr("tcp", i.server.proxy)
 	if err != nil {
@@ -32,6 +33,25 @@ func (i *ProxyTcp) Handle() {
 	if err != nil {
 		Log.Log.Println("连接tcp代理目标地址错误：" + err.Error())
 		return
+	}
+	// 处理tls握手
+	host, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	certificate, err := Cache.GetCertificate(host, port)
+	if err != nil {
+		Log.Log.Println(conn.RemoteAddr().String() + "：获取证书失败：" + err.Error())
+		return
+	}
+	if _, ok := certificate.(tls.Certificate); !ok {
+		return
+	}
+	cert := certificate.(tls.Certificate)
+	sslConn := tls.Server(i.conn, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	})
+	// tls校验
+	err = sslConn.Handshake()
+	if err == nil {
+		i.ConnPeer.conn = sslConn
 	}
 	if !i.server.nagle {
 		_ = conn.SetNoDelay(false)
