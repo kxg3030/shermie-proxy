@@ -30,15 +30,14 @@ type ProxyHttp struct {
 	response *http.Response
 	upgrade  *Websocket.Upgrader
 	target   net.Conn
-	ssl      bool
+	tls      bool
 	port     string
 }
 
 type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn) error
 
 func NewProxyHttp() *ProxyHttp {
-	p := &ProxyHttp{
-	}
+	p := &ProxyHttp{}
 	return p
 }
 
@@ -55,12 +54,12 @@ func (i *ProxyHttp) Handle() {
 	i.request = request
 	// 如果是connect方法则是https请求或者ws、wss请求
 	if i.request.Method == http.MethodConnect {
-		i.ssl = true
+		i.tls = true
 		i.handleSslRequest()
 		return
 	}
 	// 否则是普通请求
-	i.ssl = false
+	i.tls = false
 	i.handleRequest()
 }
 
@@ -72,7 +71,7 @@ func (i *ProxyHttp) handleRequest() {
 		return
 	}
 	// 如果是下载证书,返回证书
-	if i.request.Host == SslFileHost && i.request.URL.Path == "/ssl" {
+	if i.request.Host == SslFileHost && i.request.URL.Path == "/tls" {
 		response := http.Response{
 			StatusCode: http.StatusOK,
 			Header: http.Header{
@@ -188,7 +187,7 @@ func (i *ProxyHttp) handleSslRequest() {
 		Log.Log.Println("返回连接状态失败：" + err.Error())
 		return
 	}
-	// 建立ssl连接并返回给源
+	// 建立TLS连接并返回给源
 	i.SslReceiveSend()
 }
 
@@ -217,29 +216,28 @@ func (i *ProxyHttp) SslReceiveSend() {
 	})
 	// ssl校验
 	err = sslConn.Handshake()
-	// 如果不是http的ssl请求,则说明是普通ws请求(ws请求会ssl校验报错),这里专门处理这种情况
+	// 如果不是http的TLS请求,则说明是普通ws请求(ws请求会TLS校验报错),这里专门处理这种情况
 	if err != nil {
-		i.ssl = false
+		i.tls = false
 		if err == io.EOF || strings.Index(err.Error(), "closed") != -1 {
 			Log.Log.Println("客户端连接超时：" + err.Error())
 			return
 		}
 		// 反射读取最后一帧原始数据
-		lastFrameByte := Utils.GetLastTimeFrame(sslConn, "rawInput")
-		i.handleWsShakehandErr(lastFrameByte)
+		i.handleWsShakehandErr(Utils.GetLastTimeFrame(sslConn, "rawInput"))
 		return
 	}
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
 	i.conn = sslConn
-	i.ssl = true
+	i.tls = true
 	i.reader = bufio.NewReader(i.conn)
 	i.request, err = http.ReadRequest(i.reader)
 	if err != nil {
 		if err == io.EOF {
-			Log.Log.Println("浏览器ssl连接断开：" + err.Error())
+			Log.Log.Println("浏览器TLS连接断开：" + err.Error())
 			return
 		}
-		Log.Log.Println("读取ssl连接请求数据失败：" + err.Error())
+		Log.Log.Println("读取TLS连接请求数据失败：" + err.Error())
 		return
 	}
 	// 如果包含upgrade同步说明是wss请求
@@ -357,7 +355,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		_ = clientWsConn.Close()
 	}()
 	hostname := fmt.Sprintf("%s://%s%s", func() string {
-		if i.ssl {
+		if i.tls {
 			return "wss"
 		}
 		return "ws"
@@ -370,7 +368,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
 	// 如果是wss,客户端传输层忽略证书校验
-	if i.ssl {
+	if i.tls {
 		dialer = Websocket.Dialer{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
