@@ -154,6 +154,7 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	i.RemoveHeader(request.Header)
 	response, err := (&http.Transport{
 		DisableKeepAlives:     true,
+		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: 60 * time.Second,
 		DialContext:           i.DialContext(),
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
@@ -448,7 +449,7 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 			}
 		}
 		tcpAddr, _ := net.ResolveTCPAddr("tcp", ip+addr[separator:])
-		conn, err = net.DialTCP("tcp", nil, tcpAddr)
+		conn, err = net.DialTimeout("tcp", tcpAddr.String(), time.Duration(5)*time.Second)
 		if err != nil {
 			return conn, err
 		}
