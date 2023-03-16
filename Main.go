@@ -21,6 +21,12 @@ func init() {
 		Log.Log.Println("初始化根证书失败：" + err.Error())
 		return
 	}
+	// 安装证书
+	//err = Utils.InstallCert("cert.crt")
+	//if err != nil {
+	//	Log.Log.Println("安装证书失败：" + err.Error())
+	//	os.Exit(-1)
+	//}
 }
 
 func main() {
