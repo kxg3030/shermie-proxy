@@ -18,6 +18,8 @@ type ProxySocket struct {
 	port   string
 }
 
+type ResolveSocks5 func(buff []byte) (int, error)
+
 const (
 	// 预留位
 	Rsv = 0x00
@@ -220,24 +222,28 @@ func (i *ProxySocket) Handle() {
 	}
 	out := make(chan error, 2)
 	if command == 0x01 {
-		go i.Transport(out, i.conn, i.target, SocketServer)
-		go i.Transport(out, i.target, i.conn, SocketClient)
+		go i.Transport(out, i.conn, i.target, SocketClient)
+		go i.Transport(out, i.target, i.conn, SocketServer)
 	}
-	<-out
+	err = <-out
+	Log.Log.Println("代理socks5数据错误：" + err.Error())
 }
 
 func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
 	buff := make([]byte, 10*1024)
+	resolve := ResolveSocks5(func(buff []byte) (int, error) {
+		return targetConn.Write(buff)
+	})
+	var writeLen int
 	for {
 		readLen, err := originConn.Read(buff)
 		if readLen > 0 {
 			buff = buff[0:readLen]
 			if role == SocketServer {
-				i.server.OnSocket5ResponseEvent(buff)
+				writeLen, err = i.server.OnSocket5ResponseEvent(buff, resolve)
 			} else {
-				i.server.OnSocket5RequestEvent(buff)
+				writeLen, err = i.server.OnSocket5RequestEvent(buff, resolve)
 			}
-			writeLen, err := targetConn.Write(buff)
 			if writeLen < 0 || readLen < writeLen {
 				writeLen = 0
 				if err == nil {

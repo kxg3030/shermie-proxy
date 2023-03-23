@@ -34,7 +34,7 @@ type ProxyHttp struct {
 	port     string
 }
 
-type ResolveWs func(msgType int, message []byte, wsConn *Websocket.Conn) error
+type ResolveWs func(msgType int, message []byte) error
 
 func NewProxyHttp() *ProxyHttp {
 	p := &ProxyHttp{}
@@ -402,8 +402,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取ws服务器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsResponseEvent(msgType, message, clientWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
-				return wsConn.WriteMessage(msgType, message)
+			err = i.server.OnWsResponseEvent(msgType, message, func(msgType int, message []byte) error {
+				return clientWsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
@@ -424,8 +424,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取ws浏览器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsRequestEvent(msgType, message, targetWsConn, func(msgType int, message []byte, wsConn *Websocket.Conn) error {
-				return wsConn.WriteMessage(msgType, message)
+			err = i.server.OnWsRequestEvent(msgType, message, func(msgType int, message []byte) error {
+				return targetWsConn.WriteMessage(msgType, message)
 			})
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)

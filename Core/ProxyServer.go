@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Contract"
-	"github.com/kxg3030/shermie-proxy/Core/Websocket"
 	"github.com/kxg3030/shermie-proxy/Log"
 	"github.com/viki-org/dnscache"
 	"net"
@@ -15,14 +14,14 @@ import (
 type HttpRequestEvent func(request *http.Request)
 type HttpResponseEvent func(response *http.Response)
 
-type Socket5ResponseEvent func(message []byte)
-type Socket5RequestEvent func(message []byte)
+type Socket5ResponseEvent func(message []byte, resolve ResolveSocks5) (int, error)
+type Socket5RequestEvent func(message []byte, resolve ResolveSocks5) (int, error)
 
-type WsRequestEvent func(msgType int, message []byte, clientConn *Websocket.Conn, resolve ResolveWs) error
-type WsResponseEvent func(msgType int, message []byte, tartgetConn *Websocket.Conn, resolve ResolveWs) error
+type WsRequestEvent func(msgType int, message []byte, resolve ResolveWs) error
+type WsResponseEvent func(msgType int, message []byte, resolve ResolveWs) error
 
-type TcpServerStreamEvent func(message []byte)
-type TcpClientStreamEvent func(message []byte)
+type TcpServerStreamEvent func(message []byte, resolve ResolveTcp) (int, error)
+type TcpClientStreamEvent func(message []byte, resolve ResolveTcp) (int, error)
 
 type ProxyServer struct {
 	nagle                  bool
