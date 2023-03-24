@@ -33,6 +33,17 @@ const (
 	TargetDomain = 0x03
 	Version      = 0x5
 )
+
+const (
+	GssApi                = 0x01
+	UsernamePassword      = 0x02
+	IanaAssignedMin       = 0x03
+	IanaAssignedMax       = 0x7F
+	ReservedForPrivateMin = 0x80
+	ReservedForPrivateMax = 0xFE
+	NoAcceptMethod        = 0xFF
+)
+
 const SocketServer = "server"
 const SocketClient = "client"
 
@@ -71,7 +82,7 @@ func (i *ProxySocket) Handle() {
 			Log.Log.Println("读取socks5支持错误：" + err.Error())
 			return
 		}
-		if method == 0x02 {
+		if method == UsernamePassword {
 			requiredAuth = true
 		}
 	}
@@ -172,7 +183,7 @@ func (i *ProxySocket) Handle() {
 	hostname = fmt.Sprintf("%s:%s", hostname, i.port)
 	// 写入版本号
 	_ = i.writer.WriteByte(Version)
-	if command == 0x03 {
+	if command == CommandUdp {
 		i.target, err = net.DialTimeout("udp", hostname, time.Second*30)
 	} else {
 		if i.port == "443" {
