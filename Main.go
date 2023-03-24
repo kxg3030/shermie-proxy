@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"compress/gzip"
 	"flag"
 	"github.com/kxg3030/shermie-proxy/Core"
 	"github.com/kxg3030/shermie-proxy/Log"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -41,22 +38,23 @@ func main() {
 	s := Core.NewProxyServer(*port, *nagle, *proxy)
 
 	// 注册http客户端请求事件函数
-	s.OnHttpRequestEvent = func(request *http.Request) {
-		Log.Log.Println("HttpRequestEvent：" + request.URL.Host)
+	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest) {
+		mimeType := request.Header.Get("Content-Type")
+		if strings.Contains(mimeType, "json") {
+			Log.Log.Println("HttpRequestEvent：" + string(body))
+		}
+		// 可以在这里做数据修改
+		resolve(body, request)
 	}
 
 	// 注册http服务器响应事件函数
-	s.OnHttpResponseEvent = func(response *http.Response) {
-		contentType := response.Header.Get("Content-Type")
-		var reader io.Reader
-		if strings.Contains(contentType, "json") {
-			reader = bufio.NewReader(response.Body)
-			if header := response.Header.Get("Content-Encoding"); header == "gzip" {
-				reader, _ = gzip.NewReader(response.Body)
-			}
-			body, _ := io.ReadAll(reader)
+	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse) {
+		mimeType := response.Header.Get("Content-Type")
+		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
+		// 可以在这里做数据修改
+		resolve(body, response)
 	}
 
 	// 注册socket5服务器推送消息事件函数

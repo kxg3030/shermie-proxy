@@ -3,6 +3,7 @@ package Core
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -35,6 +37,8 @@ type ProxyHttp struct {
 }
 
 type ResolveWs func(msgType int, message []byte) error
+type ResolveHttpRequest func(message []byte, request *http.Request)
+type ResolveHttpResponse func(message []byte, response *http.Response)
 
 func NewProxyHttp() *ProxyHttp {
 	p := &ProxyHttp{}
@@ -82,10 +86,12 @@ func (i *ProxyHttp) handleRequest() {
 		_ = response.Write(i.conn)
 		return
 	}
-	body, _ := i.ReadBody(i.request.Body)
+	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
+		request.Body = io.NopCloser(bytes.NewReader(message))
+	})
+	body, _ := i.ReadRequestBody(i.request.Body)
 	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnHttpRequestEvent(i.request)
-	i.request.Body = io.NopCloser(bytes.NewReader(body))
+	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
@@ -101,10 +107,11 @@ func (i *ProxyHttp) handleRequest() {
 		Log.Log.Println("获取远程服务器响应失败：" + err.Error())
 		return
 	}
-	body, _ = i.ReadBody(i.response.Body)
-	i.response.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnHttpResponseEvent(i.response)
-	i.response.Body = io.NopCloser(bytes.NewReader(body))
+	body, _ = i.ReadResponseBody(i.response)
+	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
+		response.Body = io.NopCloser(bytes.NewReader(message))
+	})
+	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
 	defer func() {
 		if i.response.Body != nil {
 			i.response.Body.Close()
@@ -114,9 +121,23 @@ func (i *ProxyHttp) handleRequest() {
 }
 
 // 读取http请求体
-func (i *ProxyHttp) ReadBody(reader io.Reader) ([]byte, error) {
+func (i *ProxyHttp) ReadRequestBody(reader io.Reader) ([]byte, error) {
 	if reader == nil {
 		return []byte{}, nil
+	}
+	body, err := io.ReadAll(reader)
+	return body, err
+}
+
+func (i *ProxyHttp) ReadResponseBody(response *http.Response) ([]byte, error) {
+	var reader io.Reader
+	var err error
+	reader = bufio.NewReader(response.Body)
+	if header := response.Header.Get("Content-Encoding"); header == "gzip" {
+		reader, err = gzip.NewReader(response.Body)
+		if err != nil {
+			return []byte{}, nil
+		}
 	}
 	body, err := io.ReadAll(reader)
 	return body, err
@@ -246,11 +267,13 @@ func (i *ProxyHttp) SslReceiveSend() {
 		i.handleWssRequest()
 		return
 	}
+	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
+		request.Body = io.NopCloser(bytes.NewReader(message))
+	})
+
 	i.request = i.SetRequest(i.request)
-	body, _ := i.ReadBody(i.request.Body)
-	i.request.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnHttpRequestEvent(i.request)
-	i.request.Body = io.NopCloser(bytes.NewReader(body))
+	body, _ := i.ReadRequestBody(i.request.Body)
+	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
 	i.response, err = i.Transport(i.request)
 	if err != nil {
 		Log.Log.Println("远程服务器响应失败：" + err.Error())
@@ -265,10 +288,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 			_ = i.response.Body.Close()
 		}
 	}()
-	body, _ = i.ReadBody(i.response.Body)
-	i.response.Body = io.NopCloser(bytes.NewReader(body))
-	i.server.OnHttpResponseEvent(i.response)
-	i.response.Body = io.NopCloser(bytes.NewReader(body))
+
+	body, _ = i.ReadResponseBody(i.response)
+	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
+		response.Body = io.NopCloser(bytes.NewReader(message))
+	})
+	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
 	// 如果写入的数据比返回的头部指定长度还长,就会报错,这里手动计算返回的数据长度
 	i.response.Header.Set("Content-Length", strconv.Itoa(len(body)))
 	i.response.Body = io.NopCloser(bytes.NewReader(body))
@@ -343,6 +368,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			},
 		}
 	}
+
 	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
@@ -378,9 +404,10 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 	}
 	dialer.NetDialContext = i.DialContext()
-	targetWsConn, _, err := dialer.Dial(hostname, i.request.Header)
+	targetWsConn, response, err := dialer.Dial(hostname, i.request.Header)
 	if err != nil {
-		Log.Log.Println("连接ws服务器失败：" + err.Error())
+		header, _ := httputil.DumpResponse(response, false)
+		Log.Log.Println("连接ws服务器失败：\n" + string(header) + err.Error())
 		return true
 	}
 	defer func() {

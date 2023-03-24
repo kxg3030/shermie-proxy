@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-type HttpRequestEvent func(request *http.Request)
-type HttpResponseEvent func(response *http.Response)
+type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest)
+type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse)
 
 type Socket5ResponseEvent func(message []byte, resolve ResolveSocks5) (int, error)
 type Socket5RequestEvent func(message []byte, resolve ResolveSocks5) (int, error)
