@@ -11,7 +11,6 @@ import (
 	"github.com/kxg3030/shermie-proxy/Log"
 	"github.com/kxg3030/shermie-proxy/Utils"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -39,11 +38,6 @@ type ProxyHttp struct {
 type ResolveWs func(msgType int, message []byte) error
 type ResolveHttpRequest func(message []byte, request *http.Request)
 type ResolveHttpResponse func(message []byte, response *http.Response)
-
-func NewProxyHttp() *ProxyHttp {
-	p := &ProxyHttp{}
-	return p
-}
 
 // tcp连接处理入口
 func (i *ProxyHttp) Handle() {
@@ -173,13 +167,17 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	// 去除一些头部
 	i.RemoveHeader(request.Header)
-	response, err := (&http.Transport{
+	transport := &http.Transport{
 		DisableKeepAlives:     true,
 		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: 60 * time.Second,
 		DialContext:           i.DialContext(),
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-	}).RoundTrip(request)
+	}
+	if i.ConnPeer.server.proxy != "" {
+		transport.Proxy = http.ProxyURL(&url.URL{Host: i.server.proxy})
+	}
+	response, err := transport.RoundTrip(request)
 	if err != nil {
 		return nil, err
 	}
@@ -191,13 +189,19 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 // 处理tls请求
 func (i *ProxyHttp) handleSslRequest() {
 	var err error
-	if i.port == "443" {
-		i.target, err = tls.Dial("tcp", i.request.Host, &tls.Config{
-			InsecureSkipVerify: true,
-		})
+	// 如果使用了上级代理
+	if i.ConnPeer.server.proxy != "" {
+		i.target, err = net.Dial("tcp", i.server.proxy)
 	} else {
-		i.target, err = net.Dial("tcp", i.request.Host)
+		if i.port == "443" {
+			i.target, err = tls.Dial("tcp", i.request.Host, &tls.Config{
+				InsecureSkipVerify: true,
+			})
+		} else {
+			i.target, err = net.Dial("tcp", i.request.Host)
+		}
 	}
+
 	if err != nil {
 		_, err = i.conn.Write([]byte(ConnectFailed))
 		return
@@ -348,7 +352,7 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 			contentLen, _ := strconv.Atoi(headerKeValList[1])
 			contentHeaderLen := len(rawInput)
 			bodyLen := contentHeaderLen - contentLen
-			wsRequest.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
+			wsRequest.Body = io.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
 			wsRequest.ContentLength = int64(bodyLen)
 		}
 	}

@@ -28,14 +28,15 @@ func init() {
 func main() {
 	port := flag.String("port", "9090", "listen port")
 	nagle := flag.Bool("nagle", true, "connect remote use nagle algorithm")
-	proxy := flag.String("proxy", "0", "tcp prxoy remote host")
+	proxy := flag.String("proxy", "", "prxoy remote host")
+	to := flag.String("to", "", "tcp remote host")
 	flag.Parse()
 	if *port == "0" {
 		Log.Log.Fatal("port required")
 		return
 	}
 	// 启动服务
-	s := Core.NewProxyServer(*port, *nagle, *proxy)
+	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
 
 	// 注册http客户端请求事件函数
 	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest) {

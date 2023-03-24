@@ -22,11 +22,15 @@ func (i *ProxyTcp) Handle() {
 	defer func() {
 		_ = i.ConnPeer.conn.Close()
 	}()
-	tcpAddr, err := net.ResolveTCPAddr("tcp", i.server.proxy)
+	var tcpAddr *net.TCPAddr
+	var err error
+	// TODO 如果设置了上级代理
+	tcpAddr, err = net.ResolveTCPAddr("tcp", i.server.to)
 	if err != nil {
 		Log.Log.Println("解析tcp代理目标地址错误：" + err.Error())
 		return
 	}
+
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	defer func() {
 		_ = conn.Close()

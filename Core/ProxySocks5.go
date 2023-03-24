@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type ProxySocket struct {
+type ProxySocks5 struct {
 	ConnPeer
 	target net.Conn
 	port   string
@@ -47,11 +47,11 @@ const (
 const SocketServer = "server"
 const SocketClient = "client"
 
-func NewProxySocket() *ProxySocket {
-	return &ProxySocket{}
+func NewProxySocket() *ProxySocks5 {
+	return &ProxySocks5{}
 }
 
-func (i *ProxySocket) Handle() {
+func (i *ProxySocks5) Handle() {
 	// 读取版本号
 	version, err := i.reader.ReadByte()
 	if err != nil {
@@ -240,7 +240,7 @@ func (i *ProxySocket) Handle() {
 	Log.Log.Println("代理socks5数据错误：" + err.Error())
 }
 
-func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
+func (i *ProxySocks5) Transport(out chan<- error, originConn net.Conn, targetConn net.Conn, role string) {
 	buff := make([]byte, 10*1024)
 	resolve := ResolveSocks5(func(buff []byte) (int, error) {
 		return targetConn.Write(buff)
@@ -277,17 +277,17 @@ func (i *ProxySocket) Transport(out chan<- error, originConn net.Conn, targetCon
 	}
 }
 
-func (i *ProxySocket) IpV4(ipAddr string) bool {
+func (i *ProxySocks5) IpV4(ipAddr string) bool {
 	ip := net.ParseIP(ipAddr)
 	return ip != nil && strings.Contains(ipAddr, ".")
 }
 
-func (i *ProxySocket) IpV6(ipAddr string) bool {
+func (i *ProxySocks5) IpV6(ipAddr string) bool {
 	ip := net.ParseIP(ipAddr)
 	return ip != nil && strings.Contains(ipAddr, ":")
 }
 
 // 字节转整型
-func (i *ProxySocket) ByteToInt(input []byte) int32 {
+func (i *ProxySocks5) ByteToInt(input []byte) int32 {
 	return int32(input[0]&0xFF)<<8 | int32(input[1]&0xFF)
 }
