@@ -311,13 +311,11 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 		Header: map[string][]string{},
 	}
 	for _, value := range rawInputList {
-		// 填充header
 		headerKeValList := strings.Split(value, ": ")
 		if len(headerKeValList) <= 1 {
 			continue
 		}
 		wsRequest.Header.Set(headerKeValList[0], headerKeValList[1])
-		// 填充host
 		if headerKeValList[0] == "Host" {
 			wsRequest.Host = headerKeValList[1]
 			wsRequest.RequestURI = fmt.Sprintf("http://%s", wsRequest.Host)
@@ -327,11 +325,11 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 				return
 			}
 		}
-		// 填充content-length
+		// 计算长度
 		if headerKeValList[0] == "Content-Length" {
 			rawLen := len(rawInput)
 			bodyLen, _ := strconv.Atoi(headerKeValList[1])
-			headerLen := rawLen - bodyLen
+			headerLen := rawLen - bodyLen - 4
 			wsRequest.Body = io.NopCloser(bytes.NewBuffer([]byte(rawInput[headerLen:])))
 			wsRequest.ContentLength = int64(bodyLen)
 		}
@@ -353,7 +351,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			},
 		}
 	}
-
 	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
@@ -363,9 +360,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
 		return true
 	}
-	defer func() {
-		_ = clientWsConn.Close()
-	}()
 	hostname := fmt.Sprintf("%s://%s%s", func() string {
 		if i.tls {
 			return "wss"
@@ -404,9 +398,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	stop := make(chan error, 2)
 	// 读取浏览器数据(长连接)
 	go func() {
-		defer func() {
-			_ = targetWsConn.Close()
-		}()
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
 			if err != nil {
@@ -426,9 +417,6 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		}
 	}()
 	go func() {
-		defer func() {
-			_ = clientWsConn.Close()
-		}()
 		for {
 			msgType, message, err := clientWsConn.ReadMessage()
 			if err != nil {
