@@ -98,6 +98,8 @@ func (i *ProxyHttp) handleRequest() {
 	body, _ = i.ReadResponseBody(i.response)
 	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
 		response.Body = io.NopCloser(bytes.NewReader(message))
+		// 手动计算长度
+		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
 	_ = i.response.Write(i.conn)
@@ -260,7 +262,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
 		request.Body = io.NopCloser(bytes.NewReader(message))
 	})
-
 	i.request = i.SetRequest(i.request)
 	body, _ := i.ReadRequestBody(i.request.Body)
 	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
@@ -276,11 +277,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	body, _ = i.ReadResponseBody(i.response)
 	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
 		response.Body = io.NopCloser(bytes.NewReader(message))
+		// 手动计算长度
+		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
-	// 如果写入的数据比返回的头部指定长度还长,就会报错,这里手动计算返回的数据长度
-	i.response.Header.Set("Content-Length", strconv.Itoa(len(body)))
-	i.response.Body = io.NopCloser(bytes.NewReader(body))
 	err = i.response.Write(i.conn)
 	if err != nil {
 		if strings.Contains(err.Error(), "aborted") {
