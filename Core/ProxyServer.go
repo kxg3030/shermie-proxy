@@ -63,12 +63,10 @@ func NewProxyServer(port string, nagle bool, proxy string, to string) *ProxyServ
 }
 
 func (i *ProxyServer) Start() error {
-	// 解析地址
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%s", i.port))
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
-	// 监听服务
 	listener, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -97,8 +95,8 @@ func (i *ProxyServer) MultiListen() {
 			for {
 				conn, err := i.listener.Accept()
 				if err != nil {
-					if e, ok := err.(net.Error); ok && e.Temporary() {
-						Log.Log.Println("接受连接失败,重试：" + err.Error())
+					if e, ok := err.(net.Error); ok && e.Timeout() {
+						Log.Log.Println("接受连接超时：" + err.Error())
 						time.Sleep(time.Second / 20)
 					} else {
 						Log.Log.Println("接受连接失败：" + err.Error())

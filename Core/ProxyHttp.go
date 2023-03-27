@@ -23,7 +23,7 @@ import (
 
 const ConnectSuccess = "HTTP/1.1 200 Connection Established\r\n\r\n"
 const ConnectFailed = "HTTP/1.1 502 Bad Gateway\r\n\r\n"
-const SslFileHost = "zt.io"
+const SslFileHost = "shermie-proxy.io"
 
 type ProxyHttp struct {
 	ConnPeer
@@ -84,7 +84,6 @@ func (i *ProxyHttp) handleRequest() {
 		request.Body = io.NopCloser(bytes.NewReader(message))
 	})
 	body, _ := i.ReadRequestBody(i.request.Body)
-	i.request.Body = io.NopCloser(bytes.NewReader(body))
 	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
 	// 处理正常请求,获取响应
 	i.response, err = i.Transport(i.request)
@@ -92,11 +91,6 @@ func (i *ProxyHttp) handleRequest() {
 		Log.Log.Println("远程服务器无响应-1")
 		return
 	}
-	defer func() {
-		if i.response.Body != nil {
-			i.response.Body.Close()
-		}
-	}()
 	if err != nil {
 		Log.Log.Println("获取远程服务器响应失败：" + err.Error())
 		return
@@ -106,11 +100,6 @@ func (i *ProxyHttp) handleRequest() {
 		response.Body = io.NopCloser(bytes.NewReader(message))
 	})
 	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
-	defer func() {
-		if i.response.Body != nil {
-			i.response.Body.Close()
-		}
-	}()
 	_ = i.response.Write(i.conn)
 }
 
@@ -165,7 +154,6 @@ func (i *ProxyHttp) RemoveHeader(header http.Header) {
 
 // http请求转发
 func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
-	// 去除一些头部
 	i.RemoveHeader(request.Header)
 	transport := &http.Transport{
 		DisableKeepAlives:     true,
@@ -179,9 +167,9 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	}
 	response, err := transport.RoundTrip(request)
 	if err != nil {
+		Log.Log.Println("转发http请求失败：" + err.Error())
 		return nil, err
 	}
-	// 去除一些头部
 	i.RemoveHeader(response.Header)
 	return response, err
 }
@@ -246,7 +234,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	if err != nil {
 		i.tls = false
 		if err == io.EOF || strings.Index(err.Error(), "closed") != -1 {
-			Log.Log.Println("客户端连接超时：" + err.Error())
+			Log.Log.Println("客户端TLS握手失败：" + err.Error())
 			return
 		}
 		// 反射读取最后一帧原始数据
@@ -287,12 +275,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Log.Log.Println("远程服务器无响应-2")
 		return
 	}
-	defer func() {
-		if i.response.Body != nil {
-			_ = i.response.Body.Close()
-		}
-	}()
-
 	body, _ = i.ReadResponseBody(i.response)
 	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
 		response.Body = io.NopCloser(bytes.NewReader(message))
@@ -411,7 +393,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	targetWsConn, response, err := dialer.Dial(hostname, i.request.Header)
 	if err != nil {
 		header, _ := httputil.DumpResponse(response, false)
-		Log.Log.Println("连接ws服务器失败：\n" + string(header) + err.Error())
+		Log.Log.Println("连接ws服务器失败：" + string(header) + err.Error())
 		return true
 	}
 	defer func() {
