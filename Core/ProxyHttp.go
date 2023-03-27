@@ -157,8 +157,8 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 	i.RemoveHeader(request.Header)
 	transport := &http.Transport{
 		DisableKeepAlives:     true,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 60 * time.Second,
+		TLSHandshakeTimeout:   15 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
 		DialContext:           i.DialContext(),
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
@@ -329,10 +329,10 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 		}
 		// 填充content-length
 		if headerKeValList[0] == "Content-Length" {
-			contentLen, _ := strconv.Atoi(headerKeValList[1])
-			contentHeaderLen := len(rawInput)
-			bodyLen := contentHeaderLen - contentLen
-			wsRequest.Body = io.NopCloser(bytes.NewBuffer([]byte(rawInput[bodyLen:])))
+			rawLen := len(rawInput)
+			bodyLen, _ := strconv.Atoi(headerKeValList[1])
+			headerLen := rawLen - bodyLen
+			wsRequest.Body = io.NopCloser(bytes.NewBuffer([]byte(rawInput[headerLen:])))
 			wsRequest.ContentLength = int64(bodyLen)
 		}
 	}
@@ -391,7 +391,10 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	dialer.NetDialContext = i.DialContext()
 	targetWsConn, response, err := dialer.Dial(hostname, i.request.Header)
 	if err != nil {
-		header, _ := httputil.DumpResponse(response, false)
+		var header []byte
+		if response != nil {
+			header, _ = httputil.DumpResponse(response, false)
+		}
 		Log.Log.Println("连接ws服务器失败：" + string(header) + err.Error())
 		return true
 	}
