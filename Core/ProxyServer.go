@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Contract"
 	"github.com/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Utils"
 	"github.com/viki-org/dnscache"
 	"net"
 	"net/http"
+	"runtime"
 	"time"
 )
 
@@ -62,6 +64,25 @@ func NewProxyServer(port string, nagle bool, proxy string, to string) *ProxyServ
 	}
 }
 
+func (i *ProxyServer) Install() {
+	if runtime.GOOS == "windows" {
+		err := Utils.InstallCert("cert.crt")
+		if err != nil {
+			Log.Log.Println(err.Error())
+			return
+		}
+		Log.Log.Println("已安装系统证书")
+		err = Utils.SetWindowsProxy(fmt.Sprintf("127.0.0.1:%s", i.port))
+		if err != nil {
+			Log.Log.Println(err.Error())
+			return
+		}
+		Log.Log.Println("已设置系统代理")
+		return
+	}
+	Log.Log.Println("非windows系统请手动安装证书并设置代理,可以在根目录或访问http://shermie-proxy.io/tls获取证书文件")
+}
+
 func (i *ProxyServer) Start() error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%s", i.port))
 	if err != nil {
@@ -73,6 +94,7 @@ func (i *ProxyServer) Start() error {
 	}
 	i.listener = listener
 	i.Logo()
+	i.Install()
 	i.MultiListen()
 	select {}
 }
@@ -86,8 +108,7 @@ func (i *ProxyServer) Logo() {
   \/_____/   \/_/\/_/   \/_____/   \/_/ /_/   \/_/  \/_/   \/_/   \/_____/                 \/_/     \/_/ /_/   \/_____/   \/_/\/_/   \/_____/ 
 `
 	Log.Log.Println(logo)
-	Log.Log.Println("代理监听端口:0.0.0.0:" + i.port)
-	Log.Log.Println("请先手动将根证书.crt文件导入到系统中,可以在根目录或访问http://shermie-proxy.io/tls获取证书文件")
+	Log.Log.Println("0.0.0.0:" + i.port)
 }
 
 func (i *ProxyServer) MultiListen() {

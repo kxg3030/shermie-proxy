@@ -68,12 +68,13 @@ func (i *ProxyHttp) handleRequest() {
 		Log.Log.Println("请求地址为空")
 		return
 	}
-	// 如果是下载证书,返回证书
 	if i.request.Host == SslFileHost && i.request.URL.Path == "/tls" {
 		response := http.Response{
 			StatusCode: http.StatusOK,
 			Header: http.Header{
-				"Content-Type": []string{"application/x-x509-ca-cert"},
+				"Content-Type":              []string{"application/x-x509-ca-cert"},
+				"Content-Disposition":       []string{"attachment;filename=cert.crt"},
+				"Content-Transfer-Encoding": []string{"binary"},
 			},
 			Body: io.NopCloser(bytes.NewReader(Cert.RootCaStr)),
 		}
@@ -82,10 +83,10 @@ func (i *ProxyHttp) handleRequest() {
 	}
 	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
 		request.Body = io.NopCloser(bytes.NewReader(message))
+		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	body, _ := i.ReadRequestBody(i.request.Body)
 	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
-	// 处理正常请求,获取响应
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应-1")
@@ -124,8 +125,7 @@ func (i *ProxyHttp) ReadResponseBody(response *http.Response) ([]byte, error) {
 			return []byte{}, nil
 		}
 	}
-	body, err := io.ReadAll(reader)
-	return body, err
+	return io.ReadAll(reader)
 }
 
 // 移除请求头
@@ -261,6 +261,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	}
 	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
 		request.Body = io.NopCloser(bytes.NewReader(message))
+		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	i.request = i.SetRequest(i.request)
 	body, _ := i.ReadRequestBody(i.request.Body)
