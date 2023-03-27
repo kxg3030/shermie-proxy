@@ -86,7 +86,8 @@ func (i *ProxyServer) Logo() {
   \/_____/   \/_/\/_/   \/_____/   \/_/ /_/   \/_/  \/_/   \/_/   \/_____/                 \/_/     \/_/ /_/   \/_____/   \/_/\/_/   \/_____/ 
 `
 	Log.Log.Println(logo)
-	Log.Log.Println("代理监听端口:0.0.0.0:" + i.port + "(如果是新生成的证书文件，请先手动将根证书.crt文件导入到系统中)")
+	Log.Log.Println("代理监听端口:0.0.0.0:" + i.port + "(请先手动将根证书.crt文件导入到系统中")
+	Log.Log.Println("可以在根目录或访问http://shermie-proxy.io/tls获取证书文件)")
 }
 
 func (i *ProxyServer) MultiListen() {

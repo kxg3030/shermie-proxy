@@ -189,7 +189,6 @@ func (i *ProxyHttp) handleSslRequest() {
 			i.target, err = net.Dial("tcp", i.request.Host)
 		}
 	}
-
 	if err != nil {
 		_, err = i.conn.Write([]byte(ConnectFailed))
 		return
@@ -228,7 +227,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 	sslConn := tls.Server(i.conn, &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	})
-	// ssl校验
 	err = sslConn.Handshake()
 	// 如果不是http的TLS请求,则说明是普通ws请求(ws请求会TLS校验报错),这里专门处理这种情况
 	if err != nil {
@@ -338,6 +336,7 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 			wsRequest.ContentLength = int64(bodyLen)
 		}
 	}
+
 	i.request = wsRequest
 	i.handleWsRequest()
 }
