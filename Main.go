@@ -86,14 +86,14 @@ func main() {
 		return resolve(msgType, message)
 	}
 
-	// 注册w服务器推送消息事件函数
+	// 注册tcp服务器推送消息事件函数
 	s.OnTcpClientStreamEvent = func(message []byte, resolve Core.ResolveTcp) (int, error) {
 		Log.Log.Println("TcpClientStreamEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(message)
 	}
 
-	// 注册w服务器推送消息事件函数
+	// 注册tcp服务器推送消息事件函数
 	s.OnTcpServerStreamEvent = func(message []byte, resolve Core.ResolveTcp) (int, error) {
 		Log.Log.Println("TcpServerStreamEvent：" + string(message))
 		// 可以在这里做数据修改
