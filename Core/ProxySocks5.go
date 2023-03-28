@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kxg3030/shermie-proxy/Log"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -72,21 +71,17 @@ func (i *ProxySocks5) Handle() {
 		Log.Log.Println("socks5支持方法参数错误")
 		return
 	}
-	// 是否需要账号密码验证
-	var requiredAuth bool
-	method := uint8(0x00)
+	// 代理默认不需要账号密码验证
+	var requiredAuth bool = false
 	// 读取所有的方法列表
 	for n := 0; n < int(methodNum); n++ {
-		method, err = i.reader.ReadByte()
+		_, err := i.reader.ReadByte()
 		if err != nil {
 			Log.Log.Println("读取socks5支持错误：" + err.Error())
 			return
 		}
-		if method == UsernamePassword {
-			requiredAuth = true
-		}
 	}
-	_, err = i.writer.Write([]byte{version, method})
+	_, err = i.writer.Write([]byte{Version, 0x00})
 	if err != nil {
 		Log.Log.Println("返回数据错误：" + err.Error())
 		return
@@ -207,6 +202,9 @@ func (i *ProxySocks5) Handle() {
 	} else {
 		_ = i.writer.WriteByte(0x00)
 	}
+	defer func() {
+		i.target.Close()
+	}()
 	// 写入Rsv
 	_ = i.writer.WriteByte(Rsv)
 	remoteAddr := i.target.RemoteAddr().String()
@@ -231,7 +229,7 @@ func (i *ProxySocks5) Handle() {
 		Log.Log.Println("写入socks5握手错误：" + err.Error())
 		return
 	}
-	out := make(chan error, 2)
+	out := make(chan error, 1)
 	if command == 0x01 {
 		go i.Transport(out, i.conn, i.target, SocketClient)
 		go i.Transport(out, i.target, i.conn, SocketServer)
@@ -245,6 +243,7 @@ func (i *ProxySocks5) Transport(out chan<- error, originConn net.Conn, targetCon
 	resolve := ResolveSocks5(func(buff []byte) (int, error) {
 		return targetConn.Write(buff)
 	})
+
 	var writeLen int
 	for {
 		readLen, err := originConn.Read(buff)
@@ -268,9 +267,7 @@ func (i *ProxySocks5) Transport(out chan<- error, originConn net.Conn, targetCon
 			}
 		}
 		if err != nil {
-			if err != io.EOF {
-				out <- errors.New("读取客户端数据错误-1")
-			}
+			out <- errors.New("读取客户端数据错误-1")
 			break
 		}
 		buff = buff[:]
