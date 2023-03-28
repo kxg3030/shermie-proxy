@@ -11,6 +11,13 @@
 	<img src="https://user-images.githubusercontent.com/48542529/215652925-656fa354-55bf-44d0-ad92-a49990d4ee6f.png">		
 </div>
 
+<div align="center">
+![GitHub](https://img.shields.io/github/license/kxg3030/shermie-proxy)
+![GitHub search hit counter](https://img.shields.io/github/search/kxg3030/shermie-proxy/start)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/kxg3030/shermie-proxy/v1.1/total)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/w/kxg3030/shermie-proxy)
+</div>
+
 
 
 #### 一、项目
