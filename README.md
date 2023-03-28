@@ -8,6 +8,7 @@
 <hr>
 <div align="center">
 
+![GitHub User's stars](https://img.shields.io/github/stars/kxg3030?style=social)
 ![GitHub go.mod Go version (branch & subdirectory of monorepo)](https://img.shields.io/github/go-mod/go-version/kxg3030/shermie-proxy/master)
 ![GitHub](https://img.shields.io/github/license/kxg3030/shermie-proxy)
 ![GitHub search hit counter](https://img.shields.io/github/search/kxg3030/shermie-proxy/start)
@@ -164,7 +165,9 @@ func main() {
 
     --nagle:是否开启nagle数据合并算法,默认true
     
-    
+
+<hr>
+
 <div align="center">
 	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
 </div>
