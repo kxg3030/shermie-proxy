@@ -442,7 +442,7 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 			}
 		}
 		tcpAddr, _ := net.ResolveTCPAddr("tcp", ip+addr[separator:])
-		conn, err = net.DialTimeout("tcp", tcpAddr.String(), time.Duration(5)*time.Second)
+		conn, err = net.DialTimeout("tcp", tcpAddr.String(), time.Duration(10)*time.Second)
 		if err != nil {
 			return conn, err
 		}
