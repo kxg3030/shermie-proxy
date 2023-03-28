@@ -13,17 +13,19 @@ import (
 	"time"
 )
 
-type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest)
-type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse)
+type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest, conn net.Conn)
+type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse, conn net.Conn)
 
-type Socket5ResponseEvent func(message []byte, resolve ResolveSocks5) (int, error)
-type Socket5RequestEvent func(message []byte, resolve ResolveSocks5) (int, error)
+type Socks5ResponseEvent func(message []byte, resolve ResolveSocks5, conn net.Conn) (int, error)
+type Socks5RequestEvent func(message []byte, resolve ResolveSocks5, conn net.Conn) (int, error)
 
-type WsRequestEvent func(msgType int, message []byte, resolve ResolveWs) error
-type WsResponseEvent func(msgType int, message []byte, resolve ResolveWs) error
+type WsRequestEvent func(msgType int, message []byte, resolve ResolveWs, conn net.Conn) error
+type WsResponseEvent func(msgType int, message []byte, resolve ResolveWs, conn net.Conn) error
 
-type TcpServerStreamEvent func(message []byte, resolve ResolveTcp) (int, error)
-type TcpClientStreamEvent func(message []byte, resolve ResolveTcp) (int, error)
+type TcpConnectEvent func(conn net.Conn)
+type TcpClosetEvent func(conn net.Conn)
+type TcpServerStreamEvent func(message []byte, resolve ResolveTcp, conn net.Conn) (int, error)
+type TcpClientStreamEvent func(message []byte, resolve ResolveTcp, conn net.Conn) (int, error)
 
 const (
 	MethodGet     = 0x47
@@ -33,8 +35,7 @@ const (
 	MethodDelete  = 0x44
 	MethodOptions = 0x4F
 	MethodHead    = 0x48
-
-	SocksFive = 0x5
+	SocksFive     = 0x5
 )
 
 type ProxyServer struct {
@@ -48,8 +49,10 @@ type ProxyServer struct {
 	OnHttpResponseEvent    HttpResponseEvent
 	OnWsRequestEvent       WsRequestEvent
 	OnWsResponseEvent      WsResponseEvent
-	OnSocket5ResponseEvent Socket5ResponseEvent
-	OnSocket5RequestEvent  Socket5RequestEvent
+	OnSocks5ResponseEvent  Socks5ResponseEvent
+	OnSocks5RequestEvent   Socks5RequestEvent
+	OnTcpConnectEvent      TcpConnectEvent
+	OnTcpCloseEvent        TcpClosetEvent
 	OnTcpServerStreamEvent TcpServerStreamEvent
 	OnTcpClientStreamEvent TcpClientStreamEvent
 }
@@ -125,6 +128,7 @@ func (i *ProxyServer) MultiListen() {
 					}
 					continue
 				}
+
 				go i.handle(conn)
 			}
 		}()
@@ -133,11 +137,15 @@ func (i *ProxyServer) MultiListen() {
 
 func (i *ProxyServer) handle(conn net.Conn) {
 	var process Contract.IServerProcesser
-	defer conn.Close()
+	defer func() {
+		i.OnTcpCloseEvent(conn)
+		conn.Close()
+	}()
 	// 使用bufio读取,原conn的句柄数据被读完
+	i.OnTcpConnectEvent(conn)
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
-	// 预读取一段字节,https、ws、wss读取到的数据为：CONNECT xx.com:8080 HTTP/1.1
+	// https、ws、wss读取到的数据为：CONNECT xx.com:8080 HTTP/1.1
 	peek, err := reader.Peek(3)
 	if err != nil {
 		return

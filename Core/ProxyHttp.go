@@ -86,7 +86,7 @@ func (i *ProxyHttp) handleRequest() {
 		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	body, _ := i.ReadRequestBody(i.request.Body)
-	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
+	i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应-1")
@@ -102,7 +102,7 @@ func (i *ProxyHttp) handleRequest() {
 		// 手动计算长度
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
-	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
+	i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
 	_ = i.response.Write(i.conn)
 }
 
@@ -265,7 +265,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 	})
 	i.request = i.SetRequest(i.request)
 	body, _ := i.ReadRequestBody(i.request.Body)
-	i.server.OnHttpRequestEvent(body, i.request, resolveRequest)
+	i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
 	i.response, err = i.Transport(i.request)
 	if err != nil {
 		Log.Log.Println("远程服务器响应失败：" + err.Error())
@@ -281,7 +281,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 		// 手动计算长度
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
-	i.server.OnHttpResponseEvent(body, i.response, resolveResponse)
+	i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
 	err = i.response.Write(i.conn)
 	if err != nil {
 		if strings.Contains(err.Error(), "aborted") {
@@ -411,7 +411,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			}
 			err = i.server.OnWsResponseEvent(msgType, message, func(msgType int, message []byte) error {
 				return clientWsConn.WriteMessage(msgType, message)
-			})
+			}, i.conn)
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}
@@ -430,7 +430,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			}
 			err = i.server.OnWsRequestEvent(msgType, message, func(msgType int, message []byte) error {
 				return targetWsConn.WriteMessage(msgType, message)
-			})
+			}, i.conn)
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}

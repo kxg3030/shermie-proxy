@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/kxg3030/shermie-proxy/Core"
 	"github.com/kxg3030/shermie-proxy/Log"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -33,7 +34,7 @@ func main() {
 	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
 
 	// 注册http客户端请求事件函数
-	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest) {
+	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
 		mimeType := request.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpRequestEvent：" + string(body))
@@ -41,9 +42,20 @@ func main() {
 		// 可以在这里做数据修改
 		resolve(body, request)
 	}
+	// 注册tcp连接事件
+	s.OnTcpConnectEvent = func(conn net.Conn) {
 
+	}
+	// 注册tcp关闭事件
+	s.OnTcpCloseEvent = func(conn net.Conn) {
+
+	}
+	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
+		Log.Log.Println("HttpRequestEvent：" + conn.RemoteAddr().String())
+		resolve(message, request)
+	}
 	// 注册http服务器响应事件函数
-	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse) {
+	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) {
 		mimeType := response.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
@@ -53,42 +65,42 @@ func main() {
 	}
 
 	// 注册socket5服务器推送消息事件函数
-	s.OnSocket5ResponseEvent = func(message []byte, resolve Core.ResolveSocks5) (int, error) {
-		Log.Log.Println("Socket5ResponseEvent：" + string(message))
+	s.OnSocks5ResponseEvent = func(message []byte, resolve Core.ResolveSocks5, conn net.Conn) (int, error) {
+		Log.Log.Println("Socks5ResponseEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(message)
 	}
 
 	// 注册socket5客户端推送消息事件函数
-	s.OnSocket5RequestEvent = func(message []byte, resolve Core.ResolveSocks5) (int, error) {
-		Log.Log.Println("Socket5RequestEvent：" + string(message))
+	s.OnSocks5RequestEvent = func(message []byte, resolve Core.ResolveSocks5, conn net.Conn) (int, error) {
+		Log.Log.Println("Socks5RequestEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(message)
 	}
 
 	// 注册ws客户端推送消息事件函数
-	s.OnWsRequestEvent = func(msgType int, message []byte, resolve Core.ResolveWs) error {
+	s.OnWsRequestEvent = func(msgType int, message []byte, resolve Core.ResolveWs, conn net.Conn) error {
 		Log.Log.Println("WsRequestEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(msgType, message)
 	}
 
 	// 注册ws服务器推送消息事件函数
-	s.OnWsResponseEvent = func(msgType int, message []byte, resolve Core.ResolveWs) error {
+	s.OnWsResponseEvent = func(msgType int, message []byte, resolve Core.ResolveWs, conn net.Conn) error {
 		Log.Log.Println("WsResponseEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(msgType, message)
 	}
 
 	// 注册tcp服务器推送消息事件函数
-	s.OnTcpClientStreamEvent = func(message []byte, resolve Core.ResolveTcp) (int, error) {
+	s.OnTcpClientStreamEvent = func(message []byte, resolve Core.ResolveTcp, conn net.Conn) (int, error) {
 		Log.Log.Println("TcpClientStreamEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(message)
 	}
 
 	// 注册tcp服务器推送消息事件函数
-	s.OnTcpServerStreamEvent = func(message []byte, resolve Core.ResolveTcp) (int, error) {
+	s.OnTcpServerStreamEvent = func(message []byte, resolve Core.ResolveTcp, conn net.Conn) (int, error) {
 		Log.Log.Println("TcpServerStreamEvent：" + string(message))
 		// 可以在这里做数据修改
 		return resolve(message)
