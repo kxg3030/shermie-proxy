@@ -1,16 +1,11 @@
+<div align="center">
 
-<div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
+### Shermie-Proxy
+
 </div>
-<br/>
-<div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
-</div>
-<br/>
-<div align='center'>
-	<img src="https://user-images.githubusercontent.com/48542529/215652925-656fa354-55bf-44d0-ad92-a49990d4ee6f.png">		
-</div>
-<br>
+
+
+<hr>
 <div align="center">
 
 ![GitHub go.mod Go version (branch & subdirectory of monorepo)](https://img.shields.io/github/go-mod/go-version/kxg3030/shermie-proxy/master)
@@ -168,3 +163,16 @@ func main() {
 
 
     --nagle:是否开启nagle数据合并算法,默认true
+    
+    
+<div align="center">
+	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
+</div>
+<br/>
+<div align="center">
+	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
+</div>
+<br/>
+<div align='center'>
+	<img src="https://user-images.githubusercontent.com/48542529/215652925-656fa354-55bf-44d0-ad92-a49990d4ee6f.png">		
+</div>
