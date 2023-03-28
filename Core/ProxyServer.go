@@ -97,7 +97,7 @@ func (i *ProxyServer) Start() error {
 	}
 	i.listener = listener
 	i.Logo()
-	//i.Install()
+	i.Install()
 	i.MultiListen()
 	select {}
 }
@@ -141,7 +141,6 @@ func (i *ProxyServer) handle(conn net.Conn) {
 		i.OnTcpCloseEvent(conn)
 		conn.Close()
 	}()
-	// 使用bufio读取,原conn的句柄数据被读完
 	i.OnTcpConnectEvent(conn)
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)

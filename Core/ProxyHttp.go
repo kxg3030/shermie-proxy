@@ -99,7 +99,6 @@ func (i *ProxyHttp) handleRequest() {
 	body, _ = i.ReadResponseBody(i.response)
 	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
 		response.Body = io.NopCloser(bytes.NewReader(message))
-		// 手动计算长度
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
@@ -179,7 +178,6 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 // 处理tls请求
 func (i *ProxyHttp) handleSslRequest() {
 	var err error
-	// 如果使用了上级代理
 	if i.ConnPeer.server.proxy != "" {
 		i.target, err = net.Dial("tcp", i.server.proxy)
 	} else {
@@ -230,14 +228,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Certificates: []tls.Certificate{cert},
 	})
 	err = sslConn.Handshake()
-	// 如果不是http的TLS请求,则说明是普通ws请求(ws请求会TLS校验报错),这里专门处理这种情况
 	if err != nil {
 		i.tls = false
 		if err == io.EOF || strings.Index(err.Error(), "closed") != -1 {
 			Log.Log.Println("客户端TLS握手失败：" + err.Error())
 			return
 		}
-		// 反射读取最后一帧原始数据
 		i.handleWsShakehandErr(Utils.GetLastTimeFrame(sslConn, "rawInput"))
 		return
 	}
@@ -254,7 +250,6 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Log.Log.Println("读取TLS连接请求数据失败：" + err.Error())
 		return
 	}
-	// 如果包含upgrade同步说明是wss请求
 	if i.request.Header.Get("Connection") == "Upgrade" {
 		i.handleWssRequest()
 		return
@@ -300,13 +295,10 @@ func (i *ProxyHttp) handleWssRequest() {
 // 普通ws请求
 func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 	var err error
-	// 获取浏览器发送给服务器的头部和数据,构建一个完整的请求对象
 	rawInput := string(rawProtolInput)
 	_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	rawInputList := strings.Split(rawInput, "\r\n")
-	// 读取请求方法
 	wsMethodList := strings.Split(rawInputList[0], " ")
-	// 构建请求
 	wsRequest := &http.Request{
 		Method: wsMethodList[0],
 		Header: map[string][]string{},
@@ -326,7 +318,6 @@ func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
 				return
 			}
 		}
-		// 计算长度
 		if headerKeValList[0] == "Content-Length" {
 			rawLen := len(rawInput)
 			bodyLen, _ := strconv.Atoi(headerKeValList[1])
@@ -352,10 +343,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 			},
 		}
 	}
-	// 如果有携带自定义参数,添加上
 	i.upgrade.Subprotocols = []string{i.request.Header.Get("Sec-WebSocket-Protocol")}
 	recorder := httptest.NewRecorder()
-	// 开始ws校验,向浏览器返回Sec-WebSocket-Accept头,ws握手完成
 	clientWsConn, err := i.upgrade.Upgrade(recorder, i.request, nil, i.conn, bufio.NewReadWriter(i.reader, i.writer))
 	if err != nil {
 		Log.Log.Println("升级ws协议失败：" + err.Error())
@@ -370,7 +359,7 @@ func (i *ProxyHttp) handleWsRequest() bool {
 	if i.request.URL.RawQuery != "" {
 		hostname += "?" + i.request.URL.RawQuery
 	}
-	// 去掉ws的头部,因为后续工具类会自己生成并附加到请求中
+
 	i.RemoveWsHeader()
 	var dialer Websocket.Dialer
 	dialer = Websocket.Dialer{}
