@@ -4,8 +4,6 @@
 
 </div>
 
-
-<hr>
 <div align="center">
 
 ![GitHub User's stars](https://img.shields.io/github/stars/kxg3030?style=social)
