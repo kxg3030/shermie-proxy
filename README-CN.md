@@ -15,7 +15,7 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/w/kxg3030/shermie-proxy)
 </div>
 
-# 一、功能
+# 功能
 
 - 支持多种协议的数据接收发送，只需要监听一个端口
 - 支持数据拦截和自定义修改
@@ -26,7 +26,7 @@ TODO：
 
 - tcp连接复用
 
-# 二、使用
+# 使用
 
 - 安装
 ```go
@@ -162,6 +162,8 @@ func main() {
 
 
     --nagle:是否开启nagle数据合并算法,默认true
+
+# 交流
 
 <div align="center">
 	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
