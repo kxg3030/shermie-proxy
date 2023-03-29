@@ -97,7 +97,7 @@ func (i *ProxyServer) Start() error {
 	}
 	i.listener = listener
 	i.Logo()
-	//i.Install()
+	i.Install()
 	i.MultiListen()
 	select {}
 }
