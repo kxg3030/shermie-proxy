@@ -1,20 +1,21 @@
+中文 | [English](./README.md)
+<div align="center">
+
+# Shermie-Proxy
+
+</div>
 
 <div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
-</div>
-<br/>
-<div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
-</div>
-<br/>
-<div align='center'>
-	<img src="https://user-images.githubusercontent.com/48542529/215652925-656fa354-55bf-44d0-ad92-a49990d4ee6f.png">		
+
+![GitHub User's stars](https://img.shields.io/github/stars/kxg3030?style=social)
+![GitHub go.mod Go version (branch & subdirectory of monorepo)](https://img.shields.io/github/go-mod/go-version/kxg3030/shermie-proxy/master)
+![GitHub](https://img.shields.io/github/license/kxg3030/shermie-proxy)
+![GitHub search hit counter](https://img.shields.io/github/search/kxg3030/shermie-proxy/start)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/kxg3030/shermie-proxy/v1.1/total)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/w/kxg3030/shermie-proxy)
 </div>
 
-
-
-#### 一、项目
-> 使用go开发的代理工具，目前支持http、https、ws、wss、tcp、socket5等协议
+# 一、功能
 
 - 支持多种协议的数据接收发送，只需要监听一个端口
 - 支持数据拦截和自定义修改
@@ -25,7 +26,7 @@ TODO：
 
 - tcp连接复用
 
-#### 二、使用
+# 二、使用
 
 - 安装
 ```go
@@ -161,3 +162,11 @@ func main() {
 
 
     --nagle:是否开启nagle数据合并算法,默认true
+
+<div align="center">
+	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
+</div>
+<br/>
+<div align="center">
+	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
+</div>

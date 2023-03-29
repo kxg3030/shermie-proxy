@@ -1,3 +1,4 @@
+English | [中文](./README-CN.md)
 <div align="center">
 
 # Shermie-Proxy
@@ -15,25 +16,25 @@
 </div>
 
 
+# Function
 
-#### 一、项目
-- 支持http、https、ws、wss、tcp、socket5多种协议的数据接收发送，只需要监听一个端口
-- 支持数据拦截和自定义修改
-- 自动识别入站协议，按照消息头识别不同的协议进行处理
-- 支持添加上级tcp代理，仅支持一级代理
+- Support http, https, ws, wss, tcp, socket5 protocol data receiving and sending, only need to monitor one port
+- Support data interception and custom modification
+- Automatically identify inbound protocols, and process them according to different protocols identified by message headers
+- Support adding upper-level tcp proxy, only first-level
 
 TODO：
 
-- tcp连接复用
+- tcp connection multiplexing
 
-#### 二、使用
+# How to use
 
-- 安装
+- Install
 ```go
 go get github.com/kxg3030/shermie-proxy
 ```
 
-- 监听服务
+- Listen
 ```go
 package main
 
@@ -50,12 +51,10 @@ import (
 )
 
 func init() {
-	// 初始化日志
 	Log.NewLogger().Init()
-	// 初始化根证书
+	// Initialize the root certificate
 	err := Core.NewCertificate().Init()
 	if err != nil {
-		Log.Log.Println("初始化根证书失败：" + err.Error())
 		return
 	}
 }
@@ -70,110 +69,106 @@ func main() {
 		Log.Log.Fatal("port required")
 		return
 	}
-	// 启动服务
+	// start service
 	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
 
-	// 注册http客户端请求事件函数
+	// Register http client request event function
 	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
 		mimeType := request.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpRequestEvent：" + string(body))
 		}
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		resolve(body, request)
 	}
-	// 注册tcp连接事件
+	// Register tcp connection event
 	s.OnTcpConnectEvent = func(conn net.Conn) {
 
 	}
-	// 注册tcp关闭事件
+	// Register tcp close event
 	s.OnTcpCloseEvent = func(conn net.Conn) {
 
 	}
+	
 	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
 		Log.Log.Println("HttpRequestEvent：" + conn.RemoteAddr().String())
 		resolve(message, request)
 	}
-	// 注册http服务器响应事件函数
+
 	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) {
 		mimeType := response.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		resolve(body, response)
 	}
 
-	// 注册socket5服务器推送消息事件函数
+
 	s.OnSocks5ResponseEvent = func(message []byte, resolve Core.ResolveSocks5, conn net.Conn) (int, error) {
 		Log.Log.Println("Socks5ResponseEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(message)
 	}
 
-	// 注册socket5客户端推送消息事件函数
+
 	s.OnSocks5RequestEvent = func(message []byte, resolve Core.ResolveSocks5, conn net.Conn) (int, error) {
 		Log.Log.Println("Socks5RequestEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(message)
 	}
 
-	// 注册ws客户端推送消息事件函数
+
 	s.OnWsRequestEvent = func(msgType int, message []byte, resolve Core.ResolveWs, conn net.Conn) error {
 		Log.Log.Println("WsRequestEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(msgType, message)
 	}
 
-	// 注册ws服务器推送消息事件函数
+
 	s.OnWsResponseEvent = func(msgType int, message []byte, resolve Core.ResolveWs, conn net.Conn) error {
 		Log.Log.Println("WsResponseEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(msgType, message)
 	}
 
-	// 注册tcp服务器推送消息事件函数
+
 	s.OnTcpClientStreamEvent = func(message []byte, resolve Core.ResolveTcp, conn net.Conn) (int, error) {
 		Log.Log.Println("TcpClientStreamEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(message)
 	}
 
-	// 注册tcp服务器推送消息事件函数
+
 	s.OnTcpServerStreamEvent = func(message []byte, resolve Core.ResolveTcp, conn net.Conn) (int, error) {
 		Log.Log.Println("TcpServerStreamEvent：" + string(message))
-		// 可以在这里做数据修改
+		// Data modification can be done here
 		return resolve(message)
 	}
 
 	_ = s.Start()
 }
 ```
-- 参数
+- parameter
 
 
-    --port:代理服务监听的端口,默认为9090
+    --port:The port that the proxy service listens to, the default is 9090
 
 
-    --to:代理tcp服务时,目的服务器的ip和端口,默认为0,仅tcp代理使用
+    --to:When proxying tcp service, the ip and port of the destination server, the default is 0, only used by tcp proxy
 
 
-    --proxy:上级代理地址
+    --proxy:Superior agent address
 
 
-    --nagle:是否开启nagle数据合并算法,默认true
-    
+    --nagle:Whether to enable the nagle data merging algorithm, the default is true
 
-<hr>
 
 <div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
+
+<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
+<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
+
 </div>
 <br/>
-<div align="center">
-	<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
-</div>
-<br/>
-<div align='center'>
-	<img src="https://user-images.githubusercontent.com/48542529/215652925-656fa354-55bf-44d0-ad92-a49990d4ee6f.png">		
-</div>
+
