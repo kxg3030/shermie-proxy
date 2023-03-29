@@ -152,16 +152,16 @@ func main() {
 - parameter
 
 
-    --port:The port that the proxy service listens to, the default is 9090
+    --port: the port that the proxy service listens to, default is 9090
 
 
-    --to:When proxying tcp service, the ip and port of the destination server, the default is 0, only used by tcp proxy
+    --to: when proxying tcp service, the ip and port of the destination server, the default is 0, only used by tcp proxy
 
 
-    --proxy:Superior agent address
+    --proxy: upper-level tcp proxy
 
 
-    --nagle:Whether to enable the nagle data merging algorithm, the default is true
+    --nagle: whether to enable the nagle data merging algorithm, default is true
 
 
 <div align="center">
