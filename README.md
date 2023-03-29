@@ -164,11 +164,3 @@ func main() {
     --nagle: whether to enable the nagle data merging algorithm, default is true
 
 
-<div align="center">
-
-<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">点击加入我的星球</a>
-<a href="https://t.zsxq.com/0allV9fqi" style="font-size:16px;font-weight:bold">QQ群：931649621</a>
-
-</div>
-<br/>
-
