@@ -68,9 +68,11 @@ func (i *ProxyHttp) handleRequest() {
 		Log.Log.Println("请求地址为空")
 		return
 	}
-	if i.request.Host == SslFileHost && i.request.URL.Path == "/tls" {
+	if i.request.URL.Path == "/tls" {
 		response := http.Response{
 			StatusCode: http.StatusOK,
+			ProtoMajor: 1,
+			ProtoMinor: 1,
 			Header: http.Header{
 				"Content-Type":              []string{"application/x-x509-ca-cert"},
 				"Content-Disposition":       []string{"attachment;filename=cert.crt"},
@@ -86,7 +88,10 @@ func (i *ProxyHttp) handleRequest() {
 		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	body, _ := i.ReadRequestBody(i.request.Body)
-	i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
+	resolveResult := i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
+	if !resolveResult {
+		return
+	}
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
 		Log.Log.Println("远程服务器无响应-1")
@@ -101,7 +106,10 @@ func (i *ProxyHttp) handleRequest() {
 		response.Body = io.NopCloser(bytes.NewReader(message))
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
-	i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
+	resolveResult = i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
+	if !resolveResult {
+		return
+	}
 	_ = i.response.Write(i.conn)
 }
 
@@ -260,7 +268,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 	})
 	i.request = i.SetRequest(i.request)
 	body, _ := i.ReadRequestBody(i.request.Body)
-	i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
+	resolveResult := i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
+	if !resolveResult {
+		return
+	}
 	i.response, err = i.Transport(i.request)
 	if err != nil {
 		Log.Log.Println("远程服务器响应失败：" + err.Error())
@@ -276,7 +287,10 @@ func (i *ProxyHttp) SslReceiveSend() {
 		// 手动计算长度
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
-	i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
+	resolveResult = i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
+	if !resolveResult {
+		return
+	}
 	err = i.response.Write(i.conn)
 	if err != nil {
 		if strings.Contains(err.Error(), "aborted") {

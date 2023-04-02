@@ -90,18 +90,23 @@ func main() {
 	s.OnTcpCloseEvent = func(conn net.Conn) {
 
 	}
-	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
+	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) bool {
 		Log.Log.Println("HttpRequestEvent：" + conn.RemoteAddr().String())
+		// 可以在这里做数据修改
 		resolve(message, request)
+		// 如果正常处理必须返回true，如果不需要发送请求，返回false，一般在自己操作conn的时候才会用到
+		return true
 	}
 	// 注册http服务器响应事件函数
-	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) {
+	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) bool {
 		mimeType := response.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
 		// 可以在这里做数据修改
 		resolve(body, response)
+		// 如果正常处理必须返回true，如果不需要将数据返回给客户端，返回false，一般在自己操作conn的时候才会用到
+		return true
 	}
 
 	// 注册socket5服务器推送消息事件函数

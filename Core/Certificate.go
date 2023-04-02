@@ -68,8 +68,8 @@ func (i *Certificate) Init() error {
 
 // 用根证书生成新的子证书
 func (i *Certificate) GeneratePem(host string) ([]byte, []byte, error) {
-	max := new(big.Int).Lsh(big.NewInt(1), 128)   //把 1 左移 128 位，返回给 big.Int
-	serialNumber, _ := rand.Int(rand.Reader, max) //返回在 [0, max) 区间均匀随机分布的一个随机值
+	max := new(big.Int).Lsh(big.NewInt(1), 128)   // 把 1 左移 128 位，返回给 big.Int
+	serialNumber, _ := rand.Int(rand.Reader, max) // 返回在 [0, max) 区间均匀随机分布的一个随机值
 	template := x509.Certificate{
 		SerialNumber: serialNumber, // SerialNumber 是 CA 颁布的唯一序列号，在此使用一个大随机数来代表它
 		Subject: pkix.Name{ // Name代表一个X.509识别名。只包含识别名的公共属性，额外的属性被忽略。

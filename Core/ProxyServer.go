@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest, conn net.Conn)
-type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse, conn net.Conn)
+type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest, conn net.Conn) bool
+type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse, conn net.Conn) bool
 
 type Socks5ResponseEvent func(message []byte, resolve ResolveSocks5, conn net.Conn) (int, error)
 type Socks5RequestEvent func(message []byte, resolve ResolveSocks5, conn net.Conn) (int, error)
