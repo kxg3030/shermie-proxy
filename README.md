@@ -71,16 +71,7 @@ func main() {
 	}
 	// start service
 	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
-
-	// Register http client request event function
-	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
-		mimeType := request.Header.Get("Content-Type")
-		if strings.Contains(mimeType, "json") {
-			Log.Log.Println("HttpRequestEvent：" + string(body))
-		}
-		// Data modification can be done here
-		resolve(body, request)
-	}
+	
 	// Register tcp connection event
 	s.OnTcpConnectEvent = func(conn net.Conn) {
 

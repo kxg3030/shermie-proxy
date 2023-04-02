@@ -33,16 +33,6 @@ func main() {
 	// 启动服务
 	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
 
-	// 注册http客户端请求事件函数
-	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) bool {
-		mimeType := request.Header.Get("Content-Type")
-		if strings.Contains(mimeType, "json") {
-			Log.Log.Println("HttpRequestEvent：" + string(body))
-		}
-		// 可以在这里做数据修改
-		resolve(body, request)
-		return true
-	}
 	// 注册tcp连接事件
 	s.OnTcpConnectEvent = func(conn net.Conn) {
 
@@ -51,6 +41,7 @@ func main() {
 	s.OnTcpCloseEvent = func(conn net.Conn) {
 
 	}
+
 	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) bool {
 		Log.Log.Println("HttpRequestEvent：" + conn.RemoteAddr().String())
 		// 可以在这里做数据修改
