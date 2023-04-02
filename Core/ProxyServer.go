@@ -83,7 +83,7 @@ func (i *ProxyServer) Install() {
 		Log.Log.Println("已设置系统代理")
 		return
 	}
-	Log.Log.Println("非windows系统请手动安装证书并设置代理,可以在根目录或访问http://shermie-proxy.io/tls获取证书文件")
+	Log.Log.Println("非windows系统请手动安装证书并设置代理,可以在根目录或访问http://127.0.0.1/tls获取证书文件")
 }
 
 func (i *ProxyServer) Start() error {
