@@ -72,16 +72,7 @@ func main() {
 	}
 	// 启动服务
 	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
-
-	// 注册http客户端请求事件函数
-	s.OnHttpRequestEvent = func(body []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
-		mimeType := request.Header.Get("Content-Type")
-		if strings.Contains(mimeType, "json") {
-			Log.Log.Println("HttpRequestEvent：" + string(body))
-		}
-		// 可以在这里做数据修改
-		resolve(body, request)
-	}
+	
 	// 注册tcp连接事件
 	s.OnTcpConnectEvent = func(conn net.Conn) {
 
@@ -90,18 +81,20 @@ func main() {
 	s.OnTcpCloseEvent = func(conn net.Conn) {
 
 	}
-	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) {
+	s.OnHttpRequestEvent = func(message []byte, request *http.Request, resolve Core.ResolveHttpRequest, conn net.Conn) bool{
 		Log.Log.Println("HttpRequestEvent：" + conn.RemoteAddr().String())
 		resolve(message, request)
+		return true
 	}
 	// 注册http服务器响应事件函数
-	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) {
+	s.OnHttpResponseEvent = func(body []byte, response *http.Response, resolve Core.ResolveHttpResponse, conn net.Conn) bool{
 		mimeType := response.Header.Get("Content-Type")
 		if strings.Contains(mimeType, "json") {
 			Log.Log.Println("HttpResponseEvent：" + string(body))
 		}
 		// 可以在这里做数据修改
 		resolve(body, response)
+		return true
 	}
 
 	// 注册socket5服务器推送消息事件函数
