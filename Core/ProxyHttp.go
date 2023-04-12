@@ -43,6 +43,7 @@ type ResolveHttpResponse func(message []byte, response *http.Response)
 func (i *ProxyHttp) Handle() {
 	request, err := http.ReadRequest(i.reader)
 	if err != nil {
+		Log.Log.Println("读取请求错误：" + err.Error())
 		return
 	}
 	i.port = "-1"
@@ -64,6 +65,13 @@ func (i *ProxyHttp) Handle() {
 // 处理请求入口
 func (i *ProxyHttp) handleRequest() {
 	var err error
+	if i.request == nil {
+		i.request, err = http.ReadRequest(i.reader)
+		if err != nil {
+			Log.Log.Println("读取请求错误：" + err.Error())
+			return
+		}
+	}
 	if i.request.URL == nil {
 		Log.Log.Println("请求地址为空")
 		return
@@ -111,6 +119,7 @@ func (i *ProxyHttp) handleRequest() {
 		return
 	}
 	_ = i.response.Write(i.conn)
+	i.request = nil
 }
 
 // 读取http请求体
@@ -258,52 +267,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Log.Log.Println("读取TLS连接请求数据失败：" + err.Error())
 		return
 	}
-	if i.request.Header.Get("Connection") == "Upgrade" {
-		i.handleWssRequest()
-		return
-	}
-	resolveRequest := ResolveHttpRequest(func(message []byte, request *http.Request) {
-		request.Body = io.NopCloser(bytes.NewReader(message))
-		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
-	})
 	i.request = i.SetRequest(i.request)
-	body, _ := i.ReadRequestBody(i.request.Body)
-	resolveResult := i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
-	if !resolveResult {
+	if i.request.Header.Get("Connection") == "Upgrade" {
+		i.handleWsRequest()
 		return
 	}
-	i.response, err = i.Transport(i.request)
-	if err != nil {
-		Log.Log.Println("远程服务器响应失败：" + err.Error())
-		return
-	}
-	if i.response == nil {
-		Log.Log.Println("远程服务器无响应-2")
-		return
-	}
-	body, _ = i.ReadResponseBody(i.response)
-	resolveResponse := ResolveHttpResponse(func(message []byte, response *http.Response) {
-		response.Body = io.NopCloser(bytes.NewReader(message))
-		// 手动计算长度
-		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
-	})
-	resolveResult = i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
-	if !resolveResult {
-		return
-	}
-	err = i.response.Write(i.conn)
-	if err != nil {
-		if strings.Contains(err.Error(), "aborted") {
-			Log.Log.Println("代理返回响应数据失败：连接已关闭")
-			return
-		}
-		Log.Log.Println("代理返回响应数据失败：" + err.Error())
-	}
-}
-
-// 加密wss请求
-func (i *ProxyHttp) handleWssRequest() {
-	i.handleWsRequest()
+	i.handleRequest()
 }
 
 // 普通ws请求
@@ -405,8 +374,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		for {
 			msgType, message, err := targetWsConn.ReadMessage()
 			if err != nil {
-				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-					stop <- fmt.Errorf("读取ws服务器数据失败-1：%w", err)
+				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure, Websocket.CloseNoStatusReceived) {
+					stop <- fmt.Errorf("读取ws服务器数据失败-1：服务端断开连接")
 					break
 				}
 				stop <- fmt.Errorf("读取ws服务器数据失败-2：%w", err)
@@ -424,8 +393,8 @@ func (i *ProxyHttp) handleWsRequest() bool {
 		for {
 			msgType, message, err := clientWsConn.ReadMessage()
 			if err != nil {
-				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure) {
-					stop <- fmt.Errorf("读取ws浏览器数据失败-1：%w", err)
+				if Websocket.IsUnexpectedCloseError(err, Websocket.CloseGoingAway, Websocket.CloseAbnormalClosure, Websocket.CloseNoStatusReceived) {
+					stop <- fmt.Errorf("读取ws浏览器数据失败-1：客户端断开连接")
 					break
 				}
 				stop <- fmt.Errorf("读取ws浏览器数据失败-2：%w", err)
