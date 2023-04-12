@@ -75,7 +75,7 @@ func (i *ProxyServer) Install() {
 			return
 		}
 		Log.Log.Println("已安装系统证书")
-		err = Utils.SetWindowsProxy(fmt.Sprintf("127.0.0.1:%s", i.port))
+		err = Utils.SetSystemProxy(fmt.Sprintf("127.0.0.1:%s", i.port))
 		if err != nil {
 			Log.Log.Println(err.Error())
 			return
@@ -97,7 +97,7 @@ func (i *ProxyServer) Start() error {
 	}
 	i.listener = listener
 	i.Logo()
-	//i.Install()
+	i.Install()
 	i.MultiListen()
 	select {}
 }

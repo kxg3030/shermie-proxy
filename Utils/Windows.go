@@ -1,4 +1,4 @@
-//go:build (windows)
+//go:build windows
 // +build windows
 
 package Utils
@@ -49,7 +49,7 @@ func InstallCert(certName string) error {
 	return nil
 }
 
-func SetWindowsProxy(proxy string) error {
+func SetSystemProxy(proxy string) error {
 	const (
 		InternetPerConnFlags              = 1
 		InternetPerConnProxyServer        = 2
