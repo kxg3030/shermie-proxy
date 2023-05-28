@@ -28,3 +28,12 @@ func GetLastTimeFrame(conn *tls.Conn, property string) []byte {
 	return val.Bytes()
 }
 
+func InstallCert(certName string) error {
+
+	return nil
+}
+
+func SetSystemProxy(proxy string) error {
+
+	return nil
+}
