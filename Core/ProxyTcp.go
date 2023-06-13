@@ -3,9 +3,10 @@ package Core
 import (
 	"crypto/tls"
 	"errors"
-	"github.com/kxg3030/shermie-proxy/Log"
 	"io"
 	"net"
+
+	"github.com/kxg3030/shermie-proxy/Log"
 )
 
 const TcpServer = "server"
@@ -75,9 +76,17 @@ func (i *ProxyTcp) Transport(out chan<- error, originConn net.Conn, targetConn n
 		if readLen > 0 {
 			buff = buff[0:readLen]
 			if role == TcpServer {
-				writeLen, err = i.server.OnTcpServerStreamEvent(buff, resolve, i.conn)
+				if i.server.OnTcpServerStreamEvent != nil {
+					writeLen, err = i.server.OnTcpServerStreamEvent(buff, resolve, i.conn)
+				} else {
+					writeLen, err = resolve(buff)
+				}
 			} else {
-				writeLen, err = i.server.OnTcpClientStreamEvent(buff, resolve, i.conn)
+				if i.server.OnTcpClientStreamEvent != nil {
+					writeLen, err = i.server.OnTcpClientStreamEvent(buff, resolve, i.conn)
+				} else {
+					writeLen, err = resolve(buff)
+				}
 			}
 			if writeLen < 0 || readLen < writeLen {
 				writeLen = 0
