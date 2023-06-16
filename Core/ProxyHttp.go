@@ -7,9 +7,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/kxg3030/shermie-proxy/Core/Websocket"
-	"github.com/kxg3030/shermie-proxy/Log"
-	"github.com/kxg3030/shermie-proxy/Utils"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +16,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kxg3030/shermie-proxy/Core/Websocket"
+	"github.com/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Utils"
 )
 
 const ConnectSuccess = "HTTP/1.1 200 Connection Established\r\n\r\n"
@@ -96,9 +97,13 @@ func (i *ProxyHttp) handleRequest() {
 		request.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
 	body, _ := i.ReadRequestBody(i.request.Body)
-	resolveResult := i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
-	if !resolveResult {
-		return
+	if i.server.OnHttpRequestEvent != nil {
+		resolveResult := i.server.OnHttpRequestEvent(body, i.request, resolveRequest, i.conn)
+		if !resolveResult {
+			return
+		}
+	} else {
+		resolveRequest(body, i.request)
 	}
 	i.response, err = i.Transport(i.request)
 	if i.response == nil {
@@ -114,9 +119,13 @@ func (i *ProxyHttp) handleRequest() {
 		response.Body = io.NopCloser(bytes.NewReader(message))
 		response.Header.Set("Content-Length", strconv.Itoa(len(message)))
 	})
-	resolveResult = i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
-	if !resolveResult {
-		return
+	if i.server.OnHttpResponseEvent != nil {
+		resolveResult := i.server.OnHttpResponseEvent(body, i.response, resolveResponse, i.conn)
+		if !resolveResult {
+			return
+		}
+	} else {
+		resolveResponse(body, i.response)
 	}
 	_ = i.response.Write(i.conn)
 	i.request = nil
@@ -381,9 +390,14 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取ws服务器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsResponseEvent(msgType, message, func(msgType int, message []byte) error {
+			resolveWs := func(msgType int, message []byte) error {
 				return clientWsConn.WriteMessage(msgType, message)
-			}, i.conn)
+			}
+			if i.server.OnWsResponseEvent != nil {
+				err = i.server.OnWsResponseEvent(msgType, message, resolveWs, i.conn)
+			} else {
+				err = resolveWs(msgType, message)
+			}
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}
@@ -400,9 +414,14 @@ func (i *ProxyHttp) handleWsRequest() bool {
 				stop <- fmt.Errorf("读取ws浏览器数据失败-2：%w", err)
 				break
 			}
-			err = i.server.OnWsRequestEvent(msgType, message, func(msgType int, message []byte) error {
+			resolveWs := func(msgType int, message []byte) error {
 				return targetWsConn.WriteMessage(msgType, message)
-			}, i.conn)
+			}
+			if i.server.OnWsRequestEvent != nil {
+				err = i.server.OnWsRequestEvent(msgType, message, resolveWs, i.conn)
+			} else {
+				err = resolveWs(msgType, message)
+			}
 			if err != nil {
 				stop <- fmt.Errorf("发送ws浏览器数据失败-1：%w", err)
 			}
