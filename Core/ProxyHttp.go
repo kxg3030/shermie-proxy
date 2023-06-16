@@ -276,11 +276,12 @@ func (i *ProxyHttp) SslReceiveSend() {
 		Log.Log.Println("读取TLS连接请求数据失败：" + err.Error())
 		return
 	}
-	i.request = i.SetRequest(i.request)
-	if i.request.Header.Get("Connection") == "Upgrade" {
+
+	if i.request.Header.Get("Upgrade") == "websocket" || i.request.Header.Get("Connection") == "Upgrade" {
 		i.handleWsRequest()
 		return
 	}
+	i.request = i.SetRequest(i.request)
 	i.handleRequest()
 }
 
