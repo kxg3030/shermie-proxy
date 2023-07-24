@@ -114,8 +114,7 @@ func (i *ProxyServer) Start() error {
 	i.Logo()
 	i.Install()
 	i.MultiListen()
-	// select {}
-	return nil
+	select {}
 }
 
 func (i *ProxyServer) Stop() error {
