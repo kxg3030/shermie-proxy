@@ -261,7 +261,7 @@ func (i *ProxyHttp) SslReceiveSend() {
 			Log.Log.Println("客户端TLS握手失败：" + err.Error())
 			return
 		}
-		i.handleWsShakehandErr(Utils.GetLastTimeFrame(sslConn, "rawInput"))
+		i.handleWsHandshakeErr(Utils.GetLastTimeFrame(sslConn, "rawInput"))
 		return
 	}
 	_ = sslConn.SetDeadline(time.Now().Add(time.Second * 60))
@@ -287,9 +287,9 @@ func (i *ProxyHttp) SslReceiveSend() {
 }
 
 // 普通ws请求
-func (i *ProxyHttp) handleWsShakehandErr(rawProtolInput []byte) {
+func (i *ProxyHttp) handleWsHandshakeErr(rawProtocolInput []byte) {
 	var err error
-	rawInput := string(rawProtolInput)
+	rawInput := string(rawProtocolInput)
 	_ = i.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	rawInputList := strings.Split(rawInput, "\r\n")
 	wsMethodList := strings.Split(rawInputList[0], " ")
