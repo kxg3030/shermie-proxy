@@ -43,6 +43,7 @@ type ProxyServer struct {
 	to                     string
 	proxy                  string
 	port                   string
+	network                string
 	listener               *net.TCPListener
 	dns                    *dnscache.Resolver
 	OnHttpRequestEvent     HttpRequestEvent
@@ -57,13 +58,14 @@ type ProxyServer struct {
 	OnTcpClientStreamEvent TcpClientStreamEvent
 }
 
-func NewProxyServer(port string, nagle bool, proxy string, to string) *ProxyServer {
+func NewProxyServer(port string, nagle bool, proxy string, to string, network string) *ProxyServer {
 	return &ProxyServer{
-		port:  port,
-		dns:   dnscache.New(time.Minute * 5),
-		nagle: nagle,
-		proxy: proxy,
-		to:    to,
+		port:    port,
+		dns:     dnscache.New(time.Minute * 5),
+		nagle:   nagle,
+		proxy:   proxy,
+		to:      to,
+		network: network,
 	}
 }
 

@@ -25,13 +25,14 @@ func main() {
 	nagle := flag.Bool("nagle", true, "connect remote use nagle algorithm")
 	proxy := flag.String("proxy", "", "prxoy remote host")
 	to := flag.String("to", "", "tcp remote host")
+	network := flag.String("network", "", "force interface address")
 	flag.Parse()
 	if *port == "0" {
 		Log.Log.Fatal("port required")
 		return
 	}
 	// 启动服务
-	s := Core.NewProxyServer(*port, *nagle, *proxy, *to)
+	s := Core.NewProxyServer(*port, *nagle, *proxy, *to, *network)
 
 	// 注册tcp连接事件
 	s.OnTcpConnectEvent = func(conn net.Conn) {

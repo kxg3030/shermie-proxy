@@ -180,6 +180,7 @@ func (i *ProxyHttp) Transport(request *http.Request) (*http.Response, error) {
 		DialContext:           i.DialContext(),
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
+	transport.DialContext = i.DialContext()
 	if i.ConnPeer.server.proxy != "" {
 		transport.Proxy = http.ProxyURL(&url.URL{Host: i.server.proxy})
 	}
@@ -434,7 +435,16 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 		if ok {
 			_ = tcpConn.SetNoDelay(i.server.nagle)
 		}
-		return tcpConn, err
+		dialer := net.Dialer{
+			Timeout:   time.Duration(30) * time.Second,
+			Deadline:  time.Time{},
+			KeepAlive: time.Duration(30) * time.Second,
+		}
+		// 指定网卡
+		if i.server.network != "" {
+			dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP("192.168.3.100")}
+		}
+		return dialer.DialContext(ctx, network, tcpAddr.String())
 	}
 }
 
