@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/kxg3030/shermie-proxy/Log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kxg3030/shermie-proxy/Log"
 )
 
 type ProxySocks5 struct {
@@ -250,9 +251,17 @@ func (i *ProxySocks5) Transport(out chan<- error, originConn net.Conn, targetCon
 		if readLen > 0 {
 			buff = buff[0:readLen]
 			if role == SocketServer {
-				writeLen, err = i.server.OnSocks5ResponseEvent(buff, resolve, i.conn)
+				if i.server.OnSocks5ResponseEvent != nil {
+					writeLen, err = i.server.OnSocks5ResponseEvent(buff, resolve, i.conn)
+				} else {
+					writeLen, err = resolve(buff)
+				}
 			} else {
-				writeLen, err = i.server.OnSocks5RequestEvent(buff, resolve, i.conn)
+				if i.server.OnSocks5RequestEvent != nil {
+					writeLen, err = i.server.OnSocks5RequestEvent(buff, resolve, i.conn)
+				} else {
+					writeLen, err = resolve(buff)
+				}
 			}
 			if writeLen < 0 || readLen < writeLen {
 				writeLen = 0

@@ -3,14 +3,15 @@ package Core
 import (
 	"bufio"
 	"fmt"
-	"github.com/kxg3030/shermie-proxy/Contract"
-	"github.com/kxg3030/shermie-proxy/Log"
-	"github.com/kxg3030/shermie-proxy/Utils"
-	"github.com/viki-org/dnscache"
 	"net"
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/kxg3030/shermie-proxy/Contract"
+	"github.com/kxg3030/shermie-proxy/Log"
+	"github.com/kxg3030/shermie-proxy/Utils"
+	"github.com/viki-org/dnscache"
 )
 
 type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest, conn net.Conn) bool
@@ -88,6 +89,18 @@ func (i *ProxyServer) Install() {
 	Log.Log.Println("非windows系统请手动安装证书并设置代理,可以在根目录或访问http://127.0.0.1/tls获取证书文件")
 }
 
+func (i *ProxyServer) UnInstall() {
+	if runtime.GOOS == "windows" {
+		err := Utils.SetSystemProxy("")
+		if err != nil {
+			Log.Log.Println(err.Error())
+			return
+		}
+		Log.Log.Println("已关闭系统代理")
+		return
+	}
+}
+
 func (i *ProxyServer) Start() error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%s", i.port))
 	if err != nil {
@@ -101,7 +114,13 @@ func (i *ProxyServer) Start() error {
 	i.Logo()
 	i.Install()
 	i.MultiListen()
-	select {}
+	// select {}
+	return nil
+}
+
+func (i *ProxyServer) Stop() error {
+	i.UnInstall()
+	return nil
 }
 
 func (i *ProxyServer) Logo() {
@@ -139,10 +158,14 @@ func (i *ProxyServer) MultiListen() {
 func (i *ProxyServer) handle(conn net.Conn) {
 	var process Contract.IServerProcesser
 	defer func() {
-		i.OnTcpCloseEvent(conn)
+		if i.OnTcpCloseEvent != nil {
+			i.OnTcpCloseEvent(conn)
+		}
 		conn.Close()
 	}()
-	i.OnTcpConnectEvent(conn)
+	if i.OnTcpConnectEvent != nil {
+		i.OnTcpConnectEvent(conn)
+	}
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	// https、ws、wss读取到的数据为：CONNECT xx.com:8080 HTTP/1.1
@@ -154,7 +177,6 @@ func (i *ProxyServer) handle(conn net.Conn) {
 	switch peek[0] {
 	case MethodGet, MethodPost, MethodDelete, MethodOptions, MethodHead, MethodConnect:
 		process = &ProxyHttp{ConnPeer: peer}
-		break
 	case SocksFive:
 		process = &ProxySocks5{ConnPeer: peer}
 	default:
