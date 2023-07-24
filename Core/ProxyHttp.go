@@ -462,7 +462,7 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 		}
 		// 指定网卡
 		if i.server.network != "" {
-			dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP("192.168.3.100")}
+			dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP(i.server.network)}
 		}
 		return dialer.DialContext(ctx, network, tcpAddr.String())
 	}
