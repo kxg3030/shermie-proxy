@@ -23,7 +23,7 @@ func init() {
 func main() {
 	port := flag.String("port", "9090", "listen port")
 	nagle := flag.Bool("nagle", true, "connect remote use nagle algorithm")
-	proxy := flag.String("proxy", "", "prxoy remote host")
+	proxy := flag.String("proxy", "", "proxy remote host")
 	to := flag.String("to", "", "tcp remote host")
 	network := flag.String("network", "", "force interface address")
 	flag.Parse()
