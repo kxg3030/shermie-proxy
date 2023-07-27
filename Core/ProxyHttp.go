@@ -445,8 +445,8 @@ func (i *ProxyHttp) DialContext() func(ctx context.Context, network, addr string
 				break
 			}
 		}
-		tcpAddr, _ := net.ResolveTCPAddr("tcp", ip+addr[separator:])
-		conn, err = net.DialTimeout("tcp", tcpAddr.String(), time.Duration(10)*time.Second)
+		tcpAddr, _ := net.ResolveTCPAddr(network, ip+addr[separator:])
+		conn, err = net.DialTimeout(network, tcpAddr.String(), time.Duration(10)*time.Second)
 		if err != nil {
 			return conn, err
 		}
