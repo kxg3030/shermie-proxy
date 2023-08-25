@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/kxg3030/shermie-proxy/Contract"
@@ -13,6 +14,9 @@ import (
 	"github.com/kxg3030/shermie-proxy/Utils"
 	"github.com/viki-org/dnscache"
 )
+
+var proxyIsSet bool
+var lock = &sync.Mutex{}
 
 type HttpRequestEvent func(message []byte, request *http.Request, resolve ResolveHttpRequest, conn net.Conn) bool
 type HttpResponseEvent func(message []byte, response *http.Response, resolve ResolveHttpResponse, conn net.Conn) bool
@@ -101,7 +105,22 @@ func (i *ProxyServer) UnInstall() {
 	}
 }
 
+func (i *ProxyServer) beforeStart() {
+	lock.Lock()
+	defer func() {
+		lock.Unlock()
+	}()
+	if !proxyIsSet {
+		i.Logo()
+		// i.Install()
+		proxyIsSet = true
+	}
+
+}
+
 func (i *ProxyServer) Start() error {
+	i.beforeStart()
+	Log.Log.Println("0.0.0.0:" + i.port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%s", i.port))
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -111,8 +130,6 @@ func (i *ProxyServer) Start() error {
 		return fmt.Errorf("%w", err)
 	}
 	i.listener = listener
-	i.Logo()
-	i.Install()
 	i.MultiListen()
 	select {}
 }
@@ -131,7 +148,7 @@ func (i *ProxyServer) Logo() {
   \/_____/   \/_/\/_/   \/_____/   \/_/ /_/   \/_/  \/_/   \/_/   \/_____/                 \/_/     \/_/ /_/   \/_____/   \/_/\/_/   \/_____/ 
 `
 	Log.Log.Println(logo)
-	Log.Log.Println("0.0.0.0:" + i.port)
+
 }
 
 func (i *ProxyServer) MultiListen() {

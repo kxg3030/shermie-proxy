@@ -31,8 +31,22 @@ func main() {
 		Log.Log.Fatal("port required")
 		return
 	}
+	// 解析端口
+	portPair := strings.Split(*port, ",")
+	// 解析网卡
+	networkPair := strings.Split(*network, ",")
+	if len(portPair) != len(networkPair) {
+		Log.Log.Fatal("代理端口数量和网卡数量必须一致")
+	}
+	for key, _ := range portPair {
+		go ListenBranch(portPair[key], *nagle, *proxy, *to, networkPair[key])
+	}
+	select {}
+}
+
+func ListenBranch(port string, nagle bool, proxy string, to string, network string) {
 	// 启动服务
-	s := Core.NewProxyServer(*port, *nagle, *proxy, *to, *network)
+	s := Core.NewProxyServer(port, nagle, proxy, to, network)
 
 	// 注册tcp连接事件
 	s.OnTcpConnectEvent = func(conn net.Conn) {
